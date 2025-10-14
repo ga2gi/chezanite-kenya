@@ -1,240 +1,238 @@
-<div class="landing-page">
-  <!-- Big Title -->
-  <div class="hero">
-    <h2 class="hero-title">
-      Game Nights Made <span class="hero-highlight">Awesome!</span>
-    </h2>
-    <p class="hero-text">
-      Play with friends in rooms or compete nationwide. Fun guaranteed! ✨
-    </p>
-  </div>
+<script>
+  import { goto } from '$app/navigation';
 
-  <!-- Two Big Game Buttons -->
-  <div class="game-options">
-    <!-- Nationwide Card -->
-    <div class="card game-card">
-      <div class="game-icon nationwide-icon">
-        <span>🏆</span>
-      </div>
-      <h3 class="game-title">Nationwide</h3>
-      <p class="game-description">Compete with players across Kenya!</p>
-      <a href="/nationwide" class="btn-primary">Play Now</a>
-    </div>
+  function navigateTo(path) {
+    goto(path);
+  }
+</script>
 
-    <!-- Rooms Card -->
-    <div class="card game-card">
-      <div class="game-icon rooms-icon">
-        <span>👥</span>
-      </div>
-      <h3 class="game-title">Rooms</h3>
-      <p class="game-description">Play with friends & family!</p>
-      <a href="/rooms" class="btn-primary">Create Room</a>
-    </div>
-  </div>
+<div class="homepage">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <h1 class="hero-title">Game Nights Made Awesome!</h1>
+        <p class="hero-subtitle">
+          Play with friends in rooms or compete nationwide. Fun guaranteed! ❤️
+        </p>
+        
+        <div class="hero-cards">
+          <div class="feature-card">
+            <div class="card-icon">🇰🇪</div>
+            <h3>Nationwide</h3>
+            <p>Compete with players across Kenya!</p>
+            <button on:click={() => navigateTo('/nationwide')} class="btn-card">
+              Play Now
+            </button>
+          </div>
 
-  <!-- How It Works Section -->
-  <div class="how-it-works">
-    <h3 class="section-title">How to Play</h3>
-    <div class="steps">
-      <div class="step">
-        <div class="step-number">1</div>
-        <h4>Choose Your Mode</h4>
-        <p>Play with friends in private rooms or compete nationwide</p>
-      </div>
-      <div class="step">
-        <div class="step-number">2</div>
-        <h4>Join the Fun</h4>
-        <p>Enter a room code or jump into a nationwide tournament</p>
-      </div>
-      <div class="step">
-        <div class="step-number">3</div>
-        <h4>Play & Connect</h4>
-        <p>Enjoy exciting games and make unforgettable memories</p>
+          <div class="feature-card">
+            <div class="card-icon">👨‍👩‍👧‍👦</div>
+            <h3>Rooms</h3>
+            <p>Play with friends & family!</p>
+            <button on:click={() => navigateTo('/rooms')} class="btn-card">
+              Create Room
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <!-- How to Play Section -->
+  <section class="how-to-play">
+    <div class="container">
+      <h2 class="section-title">How to Play</h2>
+      
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>Choose Your Mode</h3>
+            <p>Play with friends in private rooms or compete nationwide</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>Join the Fun</h3>
+            <p>Enter a room code or jump into a nationwide tournament</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Play & Connect</h3>
+            <p>Enjoy exciting games and make unforgettable memories</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <style>
-  .landing-page {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: var(--space-lg) 0;
+  .homepage {
+    padding-bottom: 0;
   }
 
+  /* Hero Section */
   .hero {
+    background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+    color: white;
+    padding: 100px 0;
     text-align: center;
-    margin-bottom: var(--space-xl);
-    padding: 0 var(--space-md);
+  }
+
+  .hero-content {
+    max-width: 800px;
+    margin: 0 auto;
   }
 
   .hero-title {
-    font-size: 3.5rem;
-    font-weight: 700;
-    color: var(--color-gray-800);
-    margin: 0 0 var(--space-md) 0;
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 20px;
     line-height: 1.2;
   }
 
-  .hero-highlight {
-    color: var(--color-secondary);
+  .hero-subtitle {
+    font-size: 20px;
+    margin-bottom: 60px;
+    opacity: 0.9;
+    line-height: 1.6;
   }
 
-  .hero-text {
-    font-size: 1.4rem;
-    color: var(--color-gray-800);
-    margin: 0;
-    opacity: 0.8;
-  }
-
-  .game-options {
+  .hero-cards {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-lg);
-    max-width: 800px;
-    margin: 0 auto var(--space-xl) auto;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    max-width: 700px;
+    margin: 0 auto;
   }
 
-  @media (min-width: 768px) {
-    .game-options {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  .game-card {
+  .feature-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 40px 30px;
     text-align: center;
-    padding: var(--space-xl);
+    transition: transform 0.3s, background 0.3s;
   }
 
-  .game-icon {
-    width: 100px;
-    height: 100px;
-    border-radius: var(--radius-xl);
-    margin: 0 auto var(--space-lg) auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 2.5rem;
+  .feature-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
   }
 
-  .nationwide-icon {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  .card-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
   }
 
-  .rooms-icon {
-    background: linear-gradient(135deg, var(--color-accent), var(--color-success));
+  .feature-card h3 {
+    font-size: 24px;
+    margin-bottom: 15px;
+    font-weight: 600;
   }
 
-  .game-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--color-gray-800);
-    margin: 0 0 var(--space-md) 0;
-  }
-
-  .game-description {
-    font-size: 1.1rem;
-    color: var(--color-gray-800);
-    margin: 0 0 var(--space-lg) 0;
-    opacity: 0.8;
+  .feature-card p {
+    margin-bottom: 25px;
+    opacity: 0.9;
     line-height: 1.5;
   }
 
-  .how-it-works {
-    text-align: center;
-    padding: var(--space-xl) var(--space-md);
-    background: var(--color-white);
-    border-radius: var(--radius-xl);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    margin: var(--space-xl) auto;
-    max-width: 900px;
+  .btn-card {
+    background: white;
+    color: #7c3aed;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .btn-card:hover {
+    background: #f8fafc;
+    transform: scale(1.05);
+  }
+
+  /* How to Play Section */
+  .how-to-play {
+    padding: 100px 0;
+    background: #f8fafc;
   }
 
   .section-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--color-gray-800);
-    margin: 0 0 var(--space-xl) 0;
+    text-align: center;
+    font-size: 36px;
+    font-weight: bold;
+    margin-bottom: 60px;
+    color: #1a1a1a;
   }
 
   .steps {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-lg);
-  }
-
-  @media (min-width: 768px) {
-    .steps {
-      grid-template-columns: repeat(3, 1fr);
-    }
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 40px;
+    max-width: 1000px;
+    margin: 0 auto;
   }
 
   .step {
     text-align: center;
-    padding: var(--space-lg);
+    padding: 0 20px;
   }
 
   .step-number {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    background: #7c3aed;
     color: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0 auto var(--space-md) auto;
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0 auto 25px;
   }
 
-  .step h4 {
-    font-size: 1.3rem;
+  .step-content h3 {
+    font-size: 20px;
+    margin-bottom: 15px;
+    color: #1a1a1a;
     font-weight: 600;
-    color: var(--color-gray-800);
-    margin: 0 0 var(--space-sm) 0;
   }
 
-  .step p {
-    color: var(--color-gray-800);
-    opacity: 0.8;
-    line-height: 1.5;
-    margin: 0;
+  .step-content p {
+    color: #666;
+    line-height: 1.6;
   }
 
-  .btn-primary {
-    display: inline-block;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-    color: var(--color-white);
-    border: none;
-    border-radius: var(--radius-lg);
-    padding: var(--space-md) var(--space-lg);
-    font-weight: 600;
-    font-size: 1.1rem;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
-    transition: all 0.3s ease;
-    text-decoration: none;
-    text-align: center;
-    min-width: 140px;
-  }
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 36px;
+    }
 
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
-  }
+    .hero-subtitle {
+      font-size: 18px;
+    }
 
-  .card {
-    background: var(--color-white);
-    border-radius: var(--radius-xl);
-    padding: var(--space-lg);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    border: 1px solid var(--color-gray-100);
-    transition: all 0.3s ease;
-  }
+    .hero-cards {
+      grid-template-columns: 1fr;
+    }
 
-  .card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    .steps {
+      grid-template-columns: 1fr;
+    }
+
+    .how-to-play {
+      padding: 60px 0;
+    }
   }
 </style>
