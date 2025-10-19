@@ -1,684 +1,740 @@
 <script>
-  import { supabase } from '$lib/supabase';
   import { onMount } from 'svelte';
+  import { supabase } from '$lib/supabase.js';
   import { goto } from '$app/navigation';
 
   let user = null;
-  let isLoading = true;
-  let quickPlayStats = null;
-  let onlinePlayers = 0;
-  let recentTopPlayers = [];
-  let isStartingGame = false;
-
-  // Quick play configuration
-  const quickPlayConfig = {
-    questions: 10,
-    timePerQuestion: 20,
-    totalPoints: 500,
-    category: "General Knowledge"
+  let loading = true;
+  let gameState = 'idle'; // 'idle', 'playing', 'finished'
+  let currentQuestion = 0;
+  let score = 0;
+  let timeLeft = 20;
+  let timer = null;
+  let questions = [];
+  let selectedAnswer = null;
+  let gameStats = {
+    totalPlayers: 500,
+    averageScore: 70
   };
 
-  onMount(async () => {
-    await checkAuth();
-    loadQuickPlayStats();
-    loadOnlinePlayers();
-    loadRecentTopPlayers();
-  });
+  // Mock questions - replace with real API call
+  const mockQuestions = [
+    {
+      id: 1,
+      question: "What is the capital city of Kenya?",
+      options: ["Mombasa", "Nairobi", "Kisumu", "Nakuru"],
+      correctAnswer: 1
+    },
+    {
+      id: 2,
+      question: "Which mountain is the highest in Kenya?",
+      options: ["Mount Kilimanjaro", "Mount Kenya", "Mount Elgon", "Mount Longonot"],
+      correctAnswer: 1
+    },
+    {
+      id: 3,
+      question: "What is the official language of Kenya?",
+      options: ["Swahili", "English", "Kikuyu", "Luo"],
+      correctAnswer: 1
+    },
+    {
+      id: 4,
+      question: "Which lake in Kenya is known for flamingos?",
+      options: ["Lake Victoria", "Lake Nakuru", "Lake Naivasha", "Lake Baringo"],
+      correctAnswer: 1
+    },
+    {
+      id: 5,
+      question: "What year did Kenya gain independence?",
+      options: ["1957", "1960", "1963", "1965"],
+      correctAnswer: 2
+    },
+    {
+      id: 6,
+      question: "Which Kenyan won the Nobel Peace Prize?",
+      options: ["Jomo Kenyatta", "Wangari Maathai", "Raila Odinga", "William Ruto"],
+      correctAnswer: 1
+    },
+    {
+      id: 7,
+      question: "What is the currency of Kenya?",
+      options: ["Kenyan Dollar", "Kenyan Pound", "Kenyan Shilling", "Kenyan Franc"],
+      correctAnswer: 2
+    },
+    {
+      id: 8,
+      question: "Which national park in Kenya is famous for the wildebeest migration?",
+      options: ["Amboseli", "Tsavo", "Maasai Mara", "Samburu"],
+      correctAnswer: 2
+    },
+    {
+      id: 9,
+      question: "What is Kenya's country code?",
+      options: ["+254", "+255", "+256", "+257"],
+      correctAnswer: 0
+    },
+    {
+      id: 10,
+      question: "Which ocean borders Kenya to the east?",
+      options: ["Atlantic Ocean", "Indian Ocean", "Pacific Ocean", "Arctic Ocean"],
+      correctAnswer: 1
+    }
+  ];
 
-  async function checkAuth() {
+  onMount(async () => {
+    // Check if user is authenticated
     const { data: { session } } = await supabase.auth.getSession();
     user = session?.user;
-    isLoading = false;
-  }
-
-  function loadQuickPlayStats() {
-    // TODO: Fetch from Supabase
-    quickPlayStats = {
-      rank: "Bronze",
-      points: 450,
-      gamesPlayed: 15,
-      winStreak: 3,
-      bestScore: 480,
-      averageTime: 15.2
-    };
-  }
-
-  function loadOnlinePlayers() {
-    // TODO: Fetch real-time online players count
-    onlinePlayers = Math.floor(Math.random() * 100) + 50;
     
-    // Update every 30 seconds for demo
-    setInterval(() => {
-      onlinePlayers = Math.floor(Math.random() * 100) + 50;
-    }, 30000);
-  }
-
-  function loadRecentTopPlayers() {
-    // TODO: Fetch from Supabase
-    recentTopPlayers = [
-      { rank: 1, name: "Sarah_K", score: 480, isPremium: true },
-      { rank: 2, name: "MikeJ", score: 465, isPremium: false },
-      { rank: 3, name: "Tasha_KE", score: 450, isPremium: true },
-      { rank: 4, name: "Jamal", score: 445, isPremium: false },
-      { rank: 5, name: "Grace_W", score: 440, isPremium: true }
-    ];
-  }
-
-  async function startQuickPlay() {
     if (!user) {
-      goto('/auth/signin');
+      goto('/auth');
       return;
     }
+    
+    loading = false;
+    questions = mockQuestions;
+  });
 
-    // Show loading state
-    isStartingGame = true;
+  function startQuickPlay() {
+    gameState = 'playing';
+    currentQuestion = 0;
+    score = 0;
+    selectedAnswer = null;
+    startTimer();
+  }
 
-    try {
-      // Simulate matchmaking process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+  function startTimer() {
+    timeLeft = 20;
+    if (timer) clearInterval(timer);
+    
+    timer = setInterval(() => {
+      timeLeft--;
       
-      // Generate a unique session ID for this game
-      const sessionId = generateSessionId();
-      
-      // Navigate to game session with quick play parameters
-      goto(`/game?type=quickplay&session=${sessionId}`);
-      
-    } catch (error) {
-      console.error('Error starting quick play:', error);
-      alert('Failed to start quick play. Please try again.');
-    } finally {
-      isStartingGame = false;
+      if (timeLeft <= 0) {
+        handleTimeUp();
+      }
+    }, 1000);
+  }
+
+  function handleTimeUp() {
+    clearInterval(timer);
+    // Auto-submit if time runs out
+    if (selectedAnswer === null) {
+      // No answer selected, move to next question
+      nextQuestion();
     }
   }
 
-  function generateSessionId() {
-    return 'qp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  function selectAnswer(index) {
+    selectedAnswer = index;
   }
 
-  function viewLeaderboard() {
-    goto('/leaderboard');
+  function submitAnswer() {
+    clearInterval(timer);
+    
+    // Check if answer is correct
+    if (selectedAnswer === questions[currentQuestion].correctAnswer) {
+      score++;
+    }
+    
+    // Move to next question or finish game
+    setTimeout(() => {
+      nextQuestion();
+    }, 1000);
   }
 
-  function viewNationwide() {
+  function nextQuestion() {
+    if (currentQuestion < questions.length - 1) {
+      currentQuestion++;
+      selectedAnswer = null;
+      startTimer();
+    } else {
+      finishGame();
+    }
+  }
+
+  function finishGame() {
+    gameState = 'finished';
+    clearInterval(timer);
+    
+    // Save score to database
+    saveGameResult();
+  }
+
+  async function saveGameResult() {
+    try {
+      const { error } = await supabase
+        .from('game_results')
+        .insert({
+          user_id: user.id,
+          game_type: 'quick_play',
+          score: score,
+          total_questions: questions.length,
+          played_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving game result:', error);
+    }
+  }
+
+  function playAgain() {
+    gameState = 'idle';
+    currentQuestion = 0;
+    score = 0;
+    selectedAnswer = null;
+  }
+
+  function exitGame() {
     goto('/nationwide');
   }
 
-  function viewGameHistory() {
-    // TODO: Implement game history page
-    alert('Game history coming soon!');
-  }
+  // Calculate progress percentage
+  $: progress = (currentQuestion / questions.length) * 100;
+  $: scorePercentage = Math.round((score / questions.length) * 100);
 </script>
 
-<div class="quick-play-page">
-  <div class="container">
-    
-    <!-- Header -->
-    <section class="header-section">
-      <div class="header-nav">
-        <button class="back-button" on:click={viewNationwide}>← Back</button>
-        <h1 class="page-title">Quick Play</h1>
-        <div class="header-actions">
-          <button class="history-btn" on:click={viewGameHistory}>History</button>
-        </div>
-      </div>
-      <p class="page-subtitle">Jump in and play instantly with players across Kenya</p>
-    </section>
+<svelte:head>
+  <title>Quick Play - ChezaNite</title>
+</svelte:head>
 
-    <!-- Quick Play Card -->
-    <section class="game-section">
-      <div class="game-card">
-        <div class="game-header">
-          <div class="game-icon">⚡</div>
-          <div class="game-info">
-            <h2>Quick Play Challenge</h2>
-            <p class="game-description">
-              {quickPlayConfig.questions} questions, {quickPlayConfig.timePerQuestion} seconds each.<br>
-              Fast-paced trivia fun!
-            </p>
-          </div>
-        </div>
-
-        <!-- Game Stats -->
+<div class="quick-play-container">
+  {#if loading}
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Loading Quick Play...</p>
+    </div>
+  {:else if gameState === 'idle'}
+    <div class="game-lobby">
+      <div class="lobby-header">
+        <h1>Quick Play</h1>
         <div class="game-stats">
-          <div class="stat-item">
-            <div class="stat-value">{quickPlayConfig.questions}</div>
-            <div class="stat-label">Questions</div>
+          <div class="stat">
+            <span class="stat-value">{gameStats.totalPlayers.toLocaleString()}</span>
+            <span class="stat-label">Players Online</span>
           </div>
-          <div class="stat-item">
-            <div class="stat-value">{quickPlayConfig.timePerQuestion}s</div>
-            <div class="stat-label">Each</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">{quickPlayConfig.totalPoints}</div>
-            <div class="stat-label">Points</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">{quickPlayConfig.category}</div>
-            <div class="stat-label">Category</div>
+          <div class="stat">
+            <span class="stat-value">{gameStats.averageScore}%</span>
+            <span class="stat-label">Average Score</span>
           </div>
         </div>
+      </div>
 
-        <!-- Online Players -->
-        <div class="online-indicator">
-          <span class="online-dot">🔥</span>
-          <span class="online-text">{onlinePlayers} players online now</span>
+      <div class="game-info">
+        <div class="info-card">
+          <h3>10 Questions</h3>
+          <p>General Knowledge</p>
         </div>
+        <div class="info-card">
+          <h3>20s Each</h3>
+          <p>Per Question</p>
+        </div>
+      </div>
 
-        <!-- Play Button -->
-        <button 
-          class="play-button {isStartingGame ? 'loading' : ''}" 
-          on:click={startQuickPlay}
-          disabled={isStartingGame}
-        >
-          {#if isStartingGame}
-            <span class="loading-spinner">⏳</span>
-            Finding opponents...
-          {:else}
-            🎮 PLAY NOW
-          {/if}
+      <div class="start-section">
+        <button class="start-button" on:click={startQuickPlay}>
+          Start Quick Play
         </button>
-
-        <p class="game-note">
-          Compete in real-time • Free to play • Instant matchmaking
-        </p>
+        <p class="play-anytime">Play anytime, compete nationwide!</p>
       </div>
-    </section>
-
-    <!-- User Stats (if logged in) -->
-    {#if user && quickPlayStats}
-      <section class="user-stats-section">
-        <h3>Your Quick Play Stats</h3>
-        <div class="user-stats-grid">
-          <div class="user-stat-card">
-            <div class="user-stat-value">{quickPlayStats.rank}</div>
-            <div class="user-stat-label">Current Rank</div>
-          </div>
-          <div class="user-stat-card">
-            <div class="user-stat-value">{quickPlayStats.points}</div>
-            <div class="user-stat-label">Total Points</div>
-          </div>
-          <div class="user-stat-card">
-            <div class="user-stat-value">{quickPlayStats.winStreak}</div>
-            <div class="user-stat-label">Win Streak</div>
-          </div>
-          <div class="user-stat-card">
-            <div class="user-stat-value">{quickPlayStats.bestScore}</div>
-            <div class="user-stat-label">Best Score</div>
+    </div>
+  {:else if gameState === 'playing'}
+    <div class="game-screen">
+      <div class="game-header">
+        <div class="progress-info">
+          <span class="question-count">Question {currentQuestion + 1} of {questions.length}</span>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: {progress}%"></div>
           </div>
         </div>
-      </section>
-    {:else if user}
-      <div class="guest-message">
-        <p>Play your first Quick Play game to unlock stats!</p>
-      </div>
-    {/if}
-
-    <!-- Recent Top Players -->
-    <section class="leaderboard-section">
-      <div class="section-header">
-        <h3>Today's Top Players</h3>
-        <button class="view-all-btn" on:click={viewLeaderboard}>View All</button>
-      </div>
-      
-      <div class="players-list">
-        {#each recentTopPlayers as player}
-          <div class="player-row">
-            <div class="player-rank">#{player.rank}</div>
-            <div class="player-info">
-              <span class="player-name">
-                {player.name}
-                {#if player.isPremium}
-                  <span class="premium-badge">⭐</span>
-                {/if}
-              </span>
-            </div>
-            <div class="player-score">{player.score} pts</div>
-          </div>
-        {/each}
-      </div>
-    </section>
-
-    <!-- Quick Tips -->
-    <section class="tips-section">
-      <h3>Quick Tips</h3>
-      <div class="tips-grid">
-        <div class="tip-item">
-          <div class="tip-icon">📶</div>
-          <div class="tip-content">
-            <strong>Stable Connection</strong>
-            <p>Find a quiet spot with good internet</p>
-          </div>
-        </div>
-        <div class="tip-item">
-          <div class="tip-icon">⚡</div>
-          <div class="tip-content">
-            <strong>Quick Thinking</strong>
-            <p>Trust your first instinct on answers</p>
-          </div>
-        </div>
-        <div class="tip-item">
-          <div class="tip-icon">😊</div>
-          <div class="tip-content">
-            <strong>Have Fun</strong>
-            <p>It's a game after all - enjoy!</p>
+        <div class="timer-section">
+          <div class="timer-circle">
+            <span class="time-left">{timeLeft}s</span>
           </div>
         </div>
       </div>
-    </section>
 
-  </div>
+      <div class="question-section">
+        <h2 class="question-text">{questions[currentQuestion].question}</h2>
+        
+        <div class="options-grid">
+          {#each questions[currentQuestion].options as option, index}
+            <button
+              class="option-button {selectedAnswer === index ? 'selected' : ''}"
+              on:click={() => selectAnswer(index)}
+              disabled={selectedAnswer !== null}
+            >
+              <span class="option-letter">{String.fromCharCode(65 + index)}</span>
+              <span class="option-text">{option}</span>
+            </button>
+          {/each}
+        </div>
+
+        <div class="action-buttons">
+          {#if selectedAnswer !== null}
+            <button class="submit-button" on:click={submitAnswer}>
+              {currentQuestion === questions.length - 1 ? 'Finish Game' : 'Next Question'}
+            </button>
+          {:else}
+            <button class="skip-button" on:click={nextQuestion}>
+              Skip Question
+            </button>
+          {/if}
+        </div>
+      </div>
+    </div>
+  {:else if gameState === 'finished'}
+    <div class="results-screen">
+      <div class="results-header">
+        <h1>Game Complete!</h1>
+        <div class="score-display">
+          <div class="score-circle">
+            <span class="score-value">{score}</span>
+            <span class="score-label">out of {questions.length}</span>
+          </div>
+          <div class="score-percentage">{scorePercentage}%</div>
+        </div>
+      </div>
+
+      <div class="results-details">
+        <div class="result-stat">
+          <span class="stat-name">Correct Answers</span>
+          <span class="stat-value">{score}</span>
+        </div>
+        <div class="result-stat">
+          <span class="stat-name">Wrong Answers</span>
+          <span class="stat-value">{questions.length - score}</span>
+        </div>
+        <div class="result-stat">
+          <span class="stat-name">Your Rank</span>
+          <span class="stat-value">#{Math.floor(Math.random() * 100) + 1}</span>
+        </div>
+      </div>
+
+      <div class="results-actions">
+        <button class="play-again-button" on:click={playAgain}>
+          Play Again
+        </button>
+        <button class="exit-button" on:click={exitGame}>
+          Back to Nationwide
+        </button>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
-  .quick-play-page {
-    min-height: 100vh;
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    padding: 1rem 0;
+  .quick-play-container {
+    min-height: calc(100vh - 70px);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
   }
 
-  .container {
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+  }
+
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+  }
+
+  /* Game Lobby Styles */
+  .game-lobby {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .lobby-header h1 {
+    font-size: 3rem;
+    margin-bottom: 30px;
+    font-weight: 700;
+  }
+
+  .game-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 40px;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ffd700;
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-top: 5px;
+  }
+
+  .game-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  .info-card {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+  }
+
+  .info-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+    color: #ffd700;
+  }
+
+  .start-button {
+    background: #ffd700;
+    color: #2d3748;
+    border: none;
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 15px;
+  }
+
+  .start-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 215, 0, 0.3);
+  }
+
+  .play-anytime {
+    opacity: 0.8;
+    font-size: 0.9rem;
+  }
+
+  /* Game Screen Styles */
+  .game-screen {
     max-width: 800px;
     margin: 0 auto;
-    padding: 0 1.5rem;
-  }
-
-  /* Header Section */
-  .header-section {
-    margin-bottom: 2rem;
-  }
-
-  .header-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-
-  .back-button {
-    background: white;
-    border: 2px solid #e2e8f0;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-weight: 600;
-    color: #64748b;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-
-  .back-button:hover {
-    border-color: #3b82f6;
-    color: #3b82f6;
-  }
-
-  .page-title {
-    font-size: 2.5rem;
-    font-weight: 800;
-    margin: 0;
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 1rem;
-  }
-
-  .history-btn {
-    background: #f8fafc;
-    border: 2px solid #e2e8f0;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-weight: 600;
-    color: #64748b;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-
-  .history-btn:hover {
-    border-color: #3b82f6;
-    color: #3b82f6;
-  }
-
-  .page-subtitle {
-    color: #64748b;
-    font-size: 1.1rem;
-    margin: 0;
-    text-align: center;
-  }
-
-  /* Game Section */
-  .game-section {
-    margin-bottom: 3rem;
-  }
-
-  .game-card {
-    background: white;
-    border-radius: 20px;
-    padding: 2.5rem;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
-    border: 2px solid #e2e8f0;
-    text-align: center;
+    padding: 20px;
   }
 
   .game-header {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .game-icon {
-    font-size: 4rem;
-  }
-
-  .game-info h2 {
-    font-size: 2rem;
-    margin: 0 0 0.5rem 0;
-    color: #1e293b;
-  }
-
-  .game-description {
-    color: #64748b;
-    margin: 0;
-    line-height: 1.5;
-  }
-
-  .game-stats {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .stat-item {
-    background: #f8fafc;
-    padding: 1.5rem;
-    border-radius: 12px;
-    text-align: center;
-  }
-
-  .stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #3b82f6;
-    margin-bottom: 0.5rem;
-  }
-
-  .stat-label {
-    color: #64748b;
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-
-  .online-indicator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 2rem;
-    padding: 1rem;
-    background: #f0fdf4;
-    border-radius: 50px;
-    border: 1px solid #bbf7d0;
-  }
-
-  .online-dot {
-    font-size: 1.2rem;
-  }
-
-  .online-text {
-    color: #065f46;
-    font-weight: 600;
-  }
-
-  .play-button {
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
-    color: white;
-    border: none;
-    padding: 1.5rem 3rem;
-    border-radius: 50px;
-    font-size: 1.25rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    width: 100%;
-    margin-bottom: 1rem;
-  }
-
-  .play-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-  }
-
-  .play-button.loading {
-    background: #94a3b8;
-    cursor: not-allowed;
-  }
-
-  .loading-spinner {
-    animation: spin 1s linear infinite;
-    display: inline-block;
-    margin-right: 0.5rem;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  .game-note {
-    color: #64748b;
-    font-size: 0.9rem;
-    margin: 0;
-  }
-
-  /* User Stats Section */
-  .user-stats-section {
-    margin-bottom: 3rem;
-  }
-
-  .user-stats-section h3 {
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-    color: #1e293b;
-    text-align: center;
-  }
-
-  .user-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
-  .user-stat-card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    text-align: center;
-  }
-
-  .user-stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #3b82f6;
-    margin-bottom: 0.5rem;
-  }
-
-  .user-stat-label {
-    color: #64748b;
-    font-size: 0.9rem;
-  }
-
-  .guest-message {
-    text-align: center;
-    color: #64748b;
-    font-style: italic;
-    margin-bottom: 2rem;
-  }
-
-  /* Leaderboard Section */
-  .leaderboard-section {
-    margin-bottom: 3rem;
-  }
-
-  .section-header {
-    display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 40px;
   }
 
-  .section-header h3 {
-    font-size: 1.5rem;
-    color: #1e293b;
-    margin: 0;
-  }
-
-  .view-all-btn {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.3s;
-  }
-
-  .view-all-btn:hover {
-    background: #2563eb;
-  }
-
-  .players-list {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  .player-row {
-    display: flex;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #e2e8f0;
-    transition: background 0.3s;
-  }
-
-  .player-row:hover {
-    background: #f8fafc;
-  }
-
-  .player-row:last-child {
-    border-bottom: none;
-  }
-
-  .player-rank {
-    font-weight: 700;
-    color: #3b82f6;
-    min-width: 40px;
-  }
-
-  .player-info {
+  .progress-info {
     flex: 1;
   }
 
-  .player-name {
-    font-weight: 600;
-    color: #1e293b;
+  .question-count {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    opacity: 0.8;
   }
 
-  .premium-badge {
-    margin-left: 0.25rem;
-    font-size: 0.8rem;
+  .progress-bar {
+    width: 300px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    overflow: hidden;
   }
 
-  .player-score {
+  .progress-fill {
+    height: 100%;
+    background: #ffd700;
+    transition: width 0.3s ease;
+  }
+
+  .timer-section {
+    display: flex;
+    align-items: center;
+  }
+
+  .timer-circle {
+    width: 80px;
+    height: 80px;
+    border: 3px solid #ffd700;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
     font-weight: 700;
-    color: #059669;
   }
 
-  /* Tips Section */
-  .tips-section h3 {
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-    color: #1e293b;
+  .question-section {
     text-align: center;
   }
 
-  .tips-grid {
+  .question-text {
+    font-size: 1.8rem;
+    margin-bottom: 40px;
+    line-height: 1.4;
+  }
+
+  .options-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 30px;
   }
 
-  .tip-item {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  .option-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid transparent;
+    padding: 20px;
+    border-radius: 15px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
     display: flex;
-    align-items: start;
-    gap: 1rem;
+    align-items: center;
+    gap: 15px;
+    font-size: 1rem;
   }
 
-  .tip-icon {
-    font-size: 1.5rem;
+  .option-button:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
   }
 
-  .tip-content strong {
-    display: block;
-    color: #1e293b;
-    margin-bottom: 0.25rem;
+  .option-button.selected {
+    border-color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
   }
 
-  .tip-content p {
-    color: #64748b;
-    margin: 0;
-    font-size: 0.9rem;
+  .option-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
-  /* Responsive */
+  .option-letter {
+    background: rgba(255, 255, 255, 0.2);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  .option-button.selected .option-letter {
+    background: #ffd700;
+    color: #2d3748;
+  }
+
+  .action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+  }
+
+  .submit-button, .skip-button {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .submit-button {
+    background: #ffd700;
+    color: #2d3748;
+  }
+
+  .submit-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+  }
+
+  .skip-button {
+    background: transparent;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .skip-button:hover {
+    border-color: white;
+  }
+
+  /* Results Screen Styles */
+  .results-screen {
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .results-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 30px;
+  }
+
+  .score-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 40px;
+  }
+
+  .score-circle {
+    width: 150px;
+    height: 150px;
+    border: 5px solid #ffd700;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .score-value {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #ffd700;
+  }
+
+  .score-label {
+    font-size: 0.8rem;
+    opacity: 0.8;
+  }
+
+  .score-percentage {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ffd700;
+  }
+
+  .results-details {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    backdrop-filter: blur(10px);
+  }
+
+  .result-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .result-stat:last-child {
+    border-bottom: none;
+  }
+
+  .stat-name {
+    opacity: 0.8;
+  }
+
+  .stat-value {
+    font-weight: 700;
+    color: #ffd700;
+  }
+
+  .results-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .play-again-button, .exit-button {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .play-again-button {
+    background: #ffd700;
+    color: #2d3748;
+  }
+
+  .play-again-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+  }
+
+  .exit-button {
+    background: transparent;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .exit-button:hover {
+    border-color: white;
+  }
+
+  /* Animations */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Responsive Design */
   @media (max-width: 768px) {
-    .container {
-      padding: 0 1rem;
+    .game-stats {
+      gap: 20px;
     }
 
-    .header-nav {
-      flex-direction: column;
-      gap: 1rem;
+    .stat-value {
+      font-size: 1.5rem;
     }
 
-    .page-title {
-      font-size: 2rem;
+    .game-info {
+      grid-template-columns: 1fr;
+    }
+
+    .options-grid {
+      grid-template-columns: 1fr;
     }
 
     .game-header {
       flex-direction: column;
-      text-align: center;
+      gap: 20px;
     }
 
-    .game-stats {
-      grid-template-columns: 1fr;
+    .progress-bar {
+      width: 100%;
     }
 
-    .user-stats-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .tips-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .game-card {
-      padding: 1.5rem;
-    }
-
-    .header-actions {
-      justify-content: center;
+    .score-display {
+      flex-direction: column;
+      gap: 20px;
     }
   }
 </style>

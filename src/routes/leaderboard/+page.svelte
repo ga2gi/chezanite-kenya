@@ -1,934 +1,600 @@
 <script>
   import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { supabase } from '$lib/supabase.js';
 
-  let leaderboardData = [];
-  let isLoading = true;
-  let timeFilter = 'alltime'; // daily, weekly, monthly, alltime
-  let gameTypeFilter = 'all'; // quickplay, tournament, all
-  let currentUserRank = null;
-  let userStats = null;
+  let leaderboard = [];
+  let userRank = null;
+  let loading = true;
+  let timeFilter = 'all_time';
+  let gameTypeFilter = 'all_games';
+  let user = null;
 
-  // Sample leaderboard data - replace with Supabase data
-  const sampleLeaderboard = [
-    { rank: 1, name: "Sarah_K", score: 2450, games: 42, winRate: 85, isPremium: true, avatar: "👑" },
-    { rank: 2, name: "MikeJ", score: 2310, games: 38, winRate: 79, isPremium: false, avatar: "⚡" },
-    { rank: 3, name: "Tasha_KE", score: 2180, games: 35, winRate: 82, isPremium: true, avatar: "🌟" },
-    { rank: 4, name: "Jamal", score: 2050, games: 40, winRate: 75, isPremium: false, avatar: "🚀" },
-    { rank: 5, name: "Grace_W", score: 1980, games: 32, winRate: 88, isPremium: true, avatar: "💫" },
-    { rank: 6, name: "David_M", score: 1850, games: 28, winRate: 80, isPremium: false, avatar: "🔥" },
-    { rank: 7, name: "Lena_T", score: 1720, games: 35, winRate: 72, isPremium: false, avatar: "🎯" },
-    { rank: 8, name: "Alex_K", score: 1680, games: 30, winRate: 78, isPremium: true, avatar: "⭐" },
-    { rank: 9, name: "Moses_N", score: 1550, games: 25, winRate: 82, isPremium: false, avatar: "⚡" },
-    { rank: 10, name: "Faith_W", score: 1420, games: 22, winRate: 75, isPremium: false, avatar: "🌟" }
-  ];
-
-  // Sample user stats - replace with actual user data
-  const sampleUserStats = {
-    rank: 15,
-    score: 1250,
-    games: 18,
-    winRate: 70,
-    bestScore: 480,
-    averageScore: 320,
-    totalPlayTime: "4h 30m",
-    favoriteCategory: "Geography"
-  };
-
-  onMount(() => {
-    loadLeaderboardData();
-    loadUserStats();
+  onMount(async () => {
+    await loadLeaderboard();
   });
 
-  function loadLeaderboardData() {
-    // TODO: Fetch from Supabase based on filters
-    leaderboardData = sampleLeaderboard;
-    isLoading = false;
+  async function loadLeaderboard() {
+    loading = true;
+    
+    try {
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      user = session?.user;
+
+      // Get top players - using a direct query since we don't have the view yet
+      const { data: playerStats, error } = await supabase
+        .from('player_stats')
+        .select(`
+          *,
+          profiles!inner (
+            username,
+            display_name,
+            country
+          )
+        `)
+        .order('total_score', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error loading leaderboard:', error);
+        // Fallback to mock data for testing
+        leaderboard = getMockLeaderboard();
+      } else if (playerStats && playerStats.length > 0) {
+        leaderboard = playerStats.map((player, index) => ({
+          rank: index + 1,
+          username: player.profiles?.username || 'Player' + (index + 1),
+          displayName: player.profiles?.display_name || 'Player ' + (index + 1),
+          country: player.profiles?.country || 'Kenya',
+          totalScore: player.total_score || 0,
+          gamesPlayed: player.total_games_played || 0,
+          winRate: player.accuracy || 0,
+          bestScore: player.best_score || 0,
+          streak: player.best_streak || 0
+        }));
+      } else {
+        // If no data, use mock data
+        leaderboard = getMockLeaderboard();
+      }
+
+      // Get current user's rank if logged in
+      if (user) {
+        const { data: userStats } = await supabase
+          .from('player_stats')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (userStats) {
+          // For now, use a simple rank calculation
+          const userScore = userStats.total_score || 0;
+          const betterPlayers = leaderboard.filter(p => p.totalScore > userScore).length;
+          userRank = {
+            rank: betterPlayers + 1,
+            username: 'You',
+            displayName: 'You',
+            totalScore: userScore,
+            gamesPlayed: userStats.total_games_played || 0,
+            winRate: userStats.accuracy || 0,
+            bestScore: userStats.best_score || 0,
+            streak: userStats.current_streak || 0
+          };
+        }
+      }
+
+    } catch (error) {
+      console.error('Error in loadLeaderboard:', error);
+      leaderboard = getMockLeaderboard();
+    }
+    
+    loading = false;
   }
 
-  function loadUserStats() {
-    // TODO: Fetch current user's stats from Supabase
-    userStats = sampleUserStats;
-    currentUserRank = sampleUserStats.rank;
+  function getMockLeaderboard() {
+    return [
+      { rank: 1, username: 'trivia_king', displayName: 'John Mwangi', country: 'Nairobi', totalScore: 2450, gamesPlayed: 25, winRate: 92, bestScore: 180, streak: 8 },
+      { rank: 2, username: 'quiz_master', displayName: 'Sarah Omondi', country: 'Mombasa', totalScore: 2180, gamesPlayed: 22, winRate: 88, bestScore: 175, streak: 6 },
+      { rank: 3, username: 'brain_box', displayName: 'David Kimani', country: 'Kisumu', totalScore: 1950, gamesPlayed: 20, winRate: 85, bestScore: 170, streak: 5 },
+      { rank: 4, username: 'kenya_expert', displayName: 'Grace Wambui', country: 'Nakuru', totalScore: 1820, gamesPlayed: 18, winRate: 82, bestScore: 165, streak: 4 },
+      { rank: 5, username: 'knowledge_seeker', displayName: 'Mike Otieno', country: 'Eldoret', totalScore: 1670, gamesPlayed: 16, winRate: 78, bestScore: 160, streak: 3 },
+      { rank: 6, username: 'quiz_champ', displayName: 'Lucy Akinyi', country: 'Thika', totalScore: 1540, gamesPlayed: 15, winRate: 75, bestScore: 155, streak: 3 },
+      { rank: 7, username: 'smart_player', displayName: 'Peter Njoroge', country: 'Nairobi', totalScore: 1420, gamesPlayed: 14, winRate: 72, bestScore: 150, streak: 2 },
+      { rank: 8, username: 'trivia_pro', displayName: 'Mary Achieng', country: 'Kisumu', totalScore: 1350, gamesPlayed: 13, winRate: 70, bestScore: 145, streak: 2 },
+      { rank: 9, username: 'game_lover', displayName: 'James Kipchoge', country: 'Eldoret', totalScore: 1280, gamesPlayed: 12, winRate: 68, bestScore: 140, streak: 2 },
+      { rank: 10, username: 'knowledge_king', displayName: 'Ann Muthoni', country: 'Nakuru', totalScore: 1200, gamesPlayed: 11, winRate: 65, bestScore: 135, streak: 1 }
+    ];
   }
 
-  function filterLeaderboard() {
-    isLoading = true;
-    // Simulate API call delay
-    setTimeout(() => {
-      loadLeaderboardData();
-    }, 500);
-  }
-
-  function viewUserProfile(userName) {
-    // TODO: Navigate to user profile
-    console.log('View profile:', userName);
-  }
-
-  function playQuickGame() {
-    goto('/nationwide/quick-play');
-  }
-
-  function viewNationwide() {
-    goto('/nationwide');
-  }
-
-  function getRankBadge(rank) {
-    if (rank === 1) return { emoji: "🥇", class: "gold" };
-    if (rank === 2) return { emoji: "🥈", class: "silver" };
-    if (rank === 3) return { emoji: "🥉", class: "bronze" };
-    return { emoji: `#${rank}`, class: "normal" };
-  }
-
-  function getWinRateColor(winRate) {
-    if (winRate >= 80) return "excellent";
-    if (winRate >= 60) return "good";
-    if (winRate >= 40) return "average";
-    return "poor";
+  function getMedalEmoji(rank) {
+    if (rank === 1) return '🥇';
+    if (rank === 2) return '🥈';
+    if (rank === 3) return '🥉';
+    return null;
   }
 </script>
 
-<div class="leaderboard-page">
-  <div class="container">
-    
-    <!-- Header -->
-    <header class="header-section">
-      <div class="header-nav">
-        <button class="back-button" on:click={viewNationwide}>← Back</button>
-        <h1 class="page-title">Leaderboard</h1>
-        <button class="play-button" on:click={playQuickGame}>🎮 Play Now</button>
+<div class="leaderboard-container">
+  <!-- Header -->
+  <header class="leaderboard-header">
+    <h1>Leaderboard</h1>
+    <p>Compete with players across Kenya and climb the ranks!</p>
+  </header>
+
+  <!-- User Rank Card -->
+  {#if userRank}
+    <div class="user-rank-card">
+      <div class="user-rank-header">
+        <h2>#{userRank.rank}</h2>
+        <span>Your Rank</span>
       </div>
-      <p class="page-subtitle">Compete with players across Kenya and climb the ranks!</p>
-    </header>
-
-    <!-- User Stats Card -->
-    {#if userStats}
-      <section class="user-stats-section">
-        <div class="user-stats-card">
-          <div class="user-rank-badge">
-            <span class="rank-number">#{userStats.rank}</span>
-            <span class="rank-label">Your Rank</span>
-          </div>
-          <div class="user-stats-grid">
-            <div class="user-stat">
-              <div class="stat-value">{userStats.score}</div>
-              <div class="stat-label">Total Score</div>
-            </div>
-            <div class="user-stat">
-              <div class="stat-value">{userStats.games}</div>
-              <div class="stat-label">Games Played</div>
-            </div>
-            <div class="user-stat">
-              <div class="stat-value">{userStats.winRate}%</div>
-              <div class="stat-label">Win Rate</div>
-            </div>
-            <div class="user-stat">
-              <div class="stat-value">{userStats.bestScore}</div>
-              <div class="stat-label">Best Score</div>
-            </div>
-          </div>
+      <div class="user-stats-grid">
+        <div class="user-stat">
+          <div class="stat-value">{userRank.totalScore}</div>
+          <div class="stat-label">Total Score</div>
         </div>
-      </section>
-    {/if}
+        <div class="user-stat">
+          <div class="stat-value">{userRank.gamesPlayed}</div>
+          <div class="stat-label">Games Played</div>
+        </div>
+        <div class="user-stat">
+          <div class="stat-value">{Math.round(userRank.winRate)}%</div>
+          <div class="stat-label">Win Rate</div>
+        </div>
+        <div class="user-stat">
+          <div class="stat-value">{userRank.bestScore}</div>
+          <div class="stat-label">Best Score</div>
+        </div>
+      </div>
+    </div>
+  {:else if user}
+    <div class="user-rank-card no-stats">
+      <div class="user-rank-header">
+        <h2>Unranked</h2>
+        <span>Play a game to get ranked!</span>
+      </div>
+      <div class="play-cta">
+        <a href="/nationwide/quick-play" class="play-button">Play Your First Game</a>
+      </div>
+    </div>
+  {/if}
 
-    <!-- Filters -->
-    <section class="filters-section">
-      <div class="filter-group">
-        <label>Time Period:</label>
-        <select bind:value={timeFilter} on:change={filterLeaderboard}>
-          <option value="daily">Today</option>
-          <option value="weekly">This Week</option>
-          <option value="monthly">This Month</option>
-          <option value="alltime">All Time</option>
-        </select>
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="filter-group">
+      <label>Time Period:</label>
+      <select bind:value={timeFilter}>
+        <option value="all_time">All Time</option>
+        <option value="weekly">This Week</option>
+        <option value="monthly">This Month</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Game Type:</label>
+      <select bind:value={gameTypeFilter}>
+        <option value="all_games">All Games</option>
+        <option value="quick_play">Quick Play</option>
+        <option value="tournament">Tournaments</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Leaderboard Table -->
+  <div class="leaderboard-table-container">
+    {#if loading}
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        Loading leaderboard...
+      </div>
+    {:else}
+      <div class="table-header">
+        <span>Rank</span>
+        <span>Player</span>
+        <span>Score</span>
+        <span>Games</span>
+        <span>Win Rate</span>
       </div>
       
-      <div class="filter-group">
-        <label>Game Type:</label>
-        <select bind:value={gameTypeFilter} on:change={filterLeaderboard}>
-          <option value="all">All Games</option>
-          <option value="quickplay">Quick Play</option>
-          <option value="tournament">Tournaments</option>
-        </select>
-      </div>
-
-      <div class="stats-summary">
-        <span class="total-players">{leaderboardData.length} players ranked</span>
-      </div>
-    </section>
-
-    <!-- Leaderboard -->
-    <section class="leaderboard-section">
-      <div class="leaderboard-header">
-        <h2>Top Players</h2>
-        <div class="legend">
-          <div class="legend-item">
-            <span class="premium-indicator">⭐</span>
-            <span>Premium Player</span>
-          </div>
-        </div>
-      </div>
-
-      {#if isLoading}
-        <div class="loading-state">
-          <div class="loading-spinner">⏳</div>
-          <p>Loading leaderboard...</p>
-        </div>
-      {:else}
-        <div class="leaderboard-list">
-          <!-- Top 3 Podium -->
-          <div class="podium-section">
-            {#each leaderboardData.slice(0, 3) as player (player.rank)}
-              <div class="podium-card {getRankBadge(player.rank).class}">
-                <div class="podium-rank">{getRankBadge(player.rank).emoji}</div>
-                <div class="podium-avatar">{player.avatar}</div>
-                <div class="podium-info">
-                  <div class="player-name">
-                    {player.name}
-                    {#if player.isPremium}
-                      <span class="premium-badge">⭐</span>
-                    {/if}
-                  </div>
-                  <div class="player-score">{player.score} pts</div>
-                </div>
-                <div class="podium-stats">
-                  <div class="stat">{player.games} games</div>
-                  <div class="stat {getWinRateColor(player.winRate)}">{player.winRate}% win</div>
-                </div>
+      <div class="table-body">
+        {#each leaderboard as player}
+          <div class="table-row {player.rank <= 3 ? 'top-three' : ''} {userRank && player.rank === userRank.rank ? 'current-user' : ''}">
+            <div class="rank-cell">
+              {#if player.rank <= 3}
+                <span class="medal">{getMedalEmoji(player.rank)}</span>
+                <span class="rank-number">#{player.rank}</span>
+              {:else}
+                <span class="rank-number">#{player.rank}</span>
+              {/if}
+            </div>
+            
+            <div class="player-cell">
+              <div class="player-info">
+                <span class="player-name">{player.displayName}</span>
+                <span class="player-country">{player.country}</span>
               </div>
-            {/each}
-          </div>
-
-          <!-- Rest of Leaderboard -->
-          <div class="rankings-list">
-            {#each leaderboardData.slice(3) as player (player.rank)}
-              <div class="ranking-row {player.rank === currentUserRank ? 'current-user' : ''}">
-                <div class="rank-number {getRankBadge(player.rank).class}">
-                  {getRankBadge(player.rank).emoji}
-                </div>
-                
-                <div class="player-info" on:click={() => viewUserProfile(player.name)}>
-                  <div class="player-avatar">{player.avatar}</div>
-                  <div class="player-details">
-                    <div class="player-name">
-                      {player.name}
-                      {#if player.isPremium}
-                        <span class="premium-badge">⭐</span>
-                      {/if}
-                    </div>
-                    <div class="player-meta">
-                      <span class="games">{player.games} games</span>
-                      <span class="win-rate {getWinRateColor(player.winRate)}">{player.winRate}% win</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="player-score">
-                  <span class="score-value">{player.score}</span>
-                  <span class="score-label">points</span>
-                </div>
-
-                {#if player.rank === currentUserRank}
-                  <div class="you-badge">YOU</div>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        </div>
-      {/if}
-    </section>
-
-    <!-- Categories Leaderboard -->
-    <section class="categories-section">
-      <h3>Top Categories</h3>
-      <div class="categories-grid">
-        <div class="category-card">
-          <div class="category-icon">🌍</div>
-          <div class="category-info">
-            <h4>Geography</h4>
-            <div class="top-player">
-              <span class="player-name">Sarah_K</span>
-              <span class="player-score">980 pts</span>
+            </div>
+            
+            <div class="score-cell">
+              <span class="score-value">{player.totalScore.toLocaleString()}</span>
+            </div>
+            
+            <div class="games-cell">
+              <span>{player.gamesPlayed}</span>
+            </div>
+            
+            <div class="winrate-cell">
+              <span>{Math.round(player.winRate)}%</span>
             </div>
           </div>
-        </div>
-        
-        <div class="category-card">
-          <div class="category-icon">📚</div>
-          <div class="category-info">
-            <h4>History</h4>
-            <div class="top-player">
-              <span class="player-name">MikeJ</span>
-              <span class="player-score">850 pts</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="category-card">
-          <div class="category-icon">🎭</div>
-          <div class="category-info">
-            <h4>Culture</h4>
-            <div class="top-player">
-              <span class="player-name">Tasha_KE</span>
-              <span class="player-score">920 pts</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="category-card">
-          <div class="category-icon">🔬</div>
-          <div class="category-info">
-            <h4>Science</h4>
-            <div class="top-player">
-              <span class="player-name">Jamal</span>
-              <span class="player-score">780 pts</span>
-            </div>
-          </div>
-        </div>
+        {/each}
       </div>
-    </section>
 
-    <!-- Achievement Preview -->
-    <section class="achievements-section">
-      <h3>Top Achievements</h3>
-      <div class="achievements-grid">
-        <div class="achievement-card">
-          <div class="achievement-icon">🏆</div>
-          <div class="achievement-info">
-            <h4>Trivia Master</h4>
-            <p>Score 2000+ points in a single game</p>
-            <div class="achievement-stats">
-              <span class="completion">15% achieved</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="achievement-card">
-          <div class="achievement-icon">⚡</div>
-          <div class="achievement-info">
-            <h4>Speed Demon</h4>
-            <p>Answer 10 questions in under 2 minutes</p>
-            <div class="achievement-stats">
-              <span class="completion">28% achieved</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="achievement-card">
-          <div class="achievement-icon">🎯</div>
-          <div class="achievement-info">
-            <h4>Perfect Score</h4>
-            <p>Get 100% accuracy in a 20-question game</p>
-            <div class="achievement-stats">
-              <span class="completion">8% achieved</span>
-            </div>
-          </div>
-        </div>
+      <div class="table-footer">
+        <p>{leaderboard.length} players ranked • Updated just now</p>
       </div>
-    </section>
+    {/if}
+  </div>
 
+  <!-- Call to Action -->
+  <div class="cta-section">
+    <p>Want to climb the ranks?</p>
+    <a href="/nationwide/quick-play" class="play-button">Play Quick Play</a>
+    <a href="/nationwide" class="secondary-button">Back to Games</a>
   </div>
 </div>
 
 <style>
-  .leaderboard-page {
+  .leaderboard-container {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    padding: 2rem 0;
-  }
-
-  .container {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-  }
-
-  /* Header */
-  .header-section {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
-
-  .header-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-
-  .back-button {
-    background: white;
-    border: 2px solid #e2e8f0;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-weight: 600;
-    color: #64748b;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-
-  .back-button:hover {
-    border-color: #3b82f6;
-    color: #3b82f6;
-  }
-
-  .page-title {
-    font-size: 3rem;
-    font-weight: 800;
-    margin: 0;
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .play-button {
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   }
 
-  .play-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-  }
-
-  .page-subtitle {
-    color: #64748b;
-    font-size: 1.2rem;
-    margin: 0;
-  }
-
-  /* User Stats */
-  .user-stats-section {
-    margin-bottom: 2rem;
-  }
-
-  .user-stats-card {
-    background: white;
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-    border: 2px solid #e2e8f0;
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-  }
-
-  .user-rank-badge {
+  .leaderboard-header {
     text-align: center;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
-    border-radius: 12px;
-    color: white;
-    min-width: 120px;
+    margin-bottom: 40px;
+    padding: 20px 0;
   }
 
-  .rank-number {
-    display: block;
+  .leaderboard-header h1 {
     font-size: 2.5rem;
-    font-weight: 800;
-    margin-bottom: 0.5rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
   }
 
-  .rank-label {
-    font-size: 0.9rem;
-    font-weight: 600;
+  .leaderboard-header p {
+    font-size: 1.2rem;
     opacity: 0.9;
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.5;
+  }
+
+  .user-rank-card {
+    background: white;
+    color: #2d3748;
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .user-rank-card.no-stats {
+    text-align: center;
+  }
+
+  .user-rank-header {
+    text-align: center;
+    margin-bottom: 25px;
+  }
+
+  .user-rank-header h2 {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #cd7f32;
+    margin-bottom: 5px;
+  }
+
+  .user-rank-header span {
+    font-size: 1.1rem;
+    color: #718096;
+    font-weight: 500;
   }
 
   .user-stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
-    flex: 1;
+    gap: 15px;
   }
 
   .user-stat {
     text-align: center;
+    padding: 15px;
+    background: #f7fafc;
+    border-radius: 10px;
   }
 
-  .stat-value {
-    display: block;
+  .user-stat .stat-value {
     font-size: 1.5rem;
-    font-weight: 700;
-    color: #3b82f6;
-    margin-bottom: 0.25rem;
+    font-weight: bold;
+    color: #4299e1;
+    margin-bottom: 5px;
   }
 
-  .stat-label {
-    color: #64748b;
-    font-size: 0.9rem;
-    font-weight: 600;
+  .user-stat .stat-label {
+    font-size: 0.8rem;
+    color: #718096;
+    font-weight: 500;
   }
 
-  /* Filters */
+  .play-cta {
+    margin-top: 20px;
+  }
+
   .filters-section {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 30px;
     flex-wrap: wrap;
-    gap: 1rem;
   }
 
   .filter-group {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 10px;
   }
 
   .filter-group label {
-    font-weight: 600;
-    color: #374151;
+    font-weight: 500;
+    font-size: 0.9rem;
   }
 
   .filter-group select {
-    padding: 0.5rem 1rem;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
     background: white;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #2d3748;
     font-size: 0.9rem;
-    cursor: pointer;
+    min-width: 120px;
   }
 
-  .filter-group select:focus {
-    outline: none;
-    border-color: #3b82f6;
-  }
-
-  .stats-summary {
-    color: #64748b;
-    font-weight: 600;
-  }
-
-  /* Leaderboard */
-  .leaderboard-section {
-    margin-bottom: 3rem;
-  }
-
-  .leaderboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-  }
-
-  .leaderboard-header h2 {
-    font-size: 2rem;
-    color: #1e293b;
-    margin: 0;
-  }
-
-  .legend {
-    display: flex;
-    gap: 1rem;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #64748b;
-    font-size: 0.9rem;
-  }
-
-  .premium-indicator {
-    font-size: 1rem;
-  }
-
-  /* Podium */
-  .podium-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .podium-card {
+  .leaderboard-table-container {
     background: white;
-    border-radius: 16px;
-    padding: 2rem 1.5rem;
-    text-align: center;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-    border: 3px solid transparent;
-    transition: transform 0.3s ease;
-  }
-
-  .podium-card:hover {
-    transform: translateY(-4px);
-  }
-
-  .podium-card.gold {
-    border-color: #fbbf24;
-    background: linear-gradient(135deg, #fef3c7, white);
-  }
-
-  .podium-card.silver {
-    border-color: #9ca3af;
-    background: linear-gradient(135deg, #f3f4f6, white);
-  }
-
-  .podium-card.bronze {
-    border-color: #f59e0b;
-    background: linear-gradient(135deg, #fef3c7, white);
-  }
-
-  .podium-rank {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .podium-avatar {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-
-  .podium-info {
-    margin-bottom: 1rem;
-  }
-
-  .player-name {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-  }
-
-  .premium-badge {
-    font-size: 0.8rem;
-  }
-
-  .player-score {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #3b82f6;
-  }
-
-  .podium-stats {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    font-size: 0.9rem;
-    color: #64748b;
-  }
-
-  .stat.excellent { color: #059669; font-weight: 600; }
-  .stat.good { color: #0d9488; font-weight: 600; }
-  .stat.average { color: #d97706; font-weight: 600; }
-  .stat.poor { color: #dc2626; font-weight: 600; }
-
-  /* Rankings List */
-  .rankings-list {
-    background: white;
-    border-radius: 12px;
+    border-radius: 15px;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    max-width: 1000px;
+    margin: 0 auto 40px;
   }
 
-  .ranking-row {
-    display: flex;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-    transition: background 0.3s ease;
-  }
-
-  .ranking-row:hover {
-    background: #f8fafc;
-  }
-
-  .ranking-row.current-user {
-    background: #dbeafe;
-    border-left: 4px solid #3b82f6;
-  }
-
-  .ranking-row:last-child {
-    border-bottom: none;
-  }
-
-  .rank-number {
-    font-size: 1.2rem;
-    font-weight: 700;
-    min-width: 50px;
-  }
-
-  .rank-number.gold { color: #fbbf24; }
-  .rank-number.silver { color: #9ca3af; }
-  .rank-number.bronze { color: #f59e0b; }
-  .rank-number.normal { color: #64748b; }
-
-  .player-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex: 1;
-    cursor: pointer;
-  }
-
-  .player-avatar {
-    font-size: 1.5rem;
-  }
-
-  .player-details {
-    flex: 1;
-  }
-
-  .player-meta {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.8rem;
-    color: #64748b;
-    margin-top: 0.25rem;
-  }
-
-  .win-rate.excellent { color: #059669; font-weight: 600; }
-  .win-rate.good { color: #0d9488; font-weight: 600; }
-  .win-rate.average { color: #d97706; font-weight: 600; }
-  .win-rate.poor { color: #dc2626; font-weight: 600; }
-
-  .player-score {
-    text-align: right;
-    min-width: 100px;
-  }
-
-  .score-value {
-    display: block;
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #3b82f6;
-  }
-
-  .score-label {
-    display: block;
-    font-size: 0.8rem;
-    color: #64748b;
-  }
-
-  .you-badge {
-    background: #3b82f6;
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    margin-left: 1rem;
-  }
-
-  /* Categories */
-  .categories-section {
-    margin-bottom: 3rem;
-  }
-
-  .categories-section h3 {
-    font-size: 1.5rem;
-    color: #1e293b;
-    margin-bottom: 1.5rem;
-  }
-
-  .categories-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
-  .category-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    transition: transform 0.3s ease;
-  }
-
-  .category-card:hover {
-    transform: translateY(-2px);
-  }
-
-  .category-icon {
-    font-size: 2rem;
-  }
-
-  .category-info {
-    flex: 1;
-  }
-
-  .category-info h4 {
-    margin: 0 0 0.5rem 0;
-    color: #1f2937;
-  }
-
-  .top-player {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .player-name {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #374151;
-  }
-
-  .player-score {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #3b82f6;
-  }
-
-  /* Achievements */
-  .achievements-section h3 {
-    font-size: 1.5rem;
-    color: #1e293b;
-    margin-bottom: 1.5rem;
-  }
-
-  .achievements-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-  }
-
-  .achievement-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: start;
-    gap: 1rem;
-    transition: transform 0.3s ease;
-  }
-
-  .achievement-card:hover {
-    transform: translateY(-2px);
-  }
-
-  .achievement-icon {
-    font-size: 2rem;
-    flex-shrink: 0;
-  }
-
-  .achievement-info {
-    flex: 1;
-  }
-
-  .achievement-info h4 {
-    margin: 0 0 0.5rem 0;
-    color: #1f2937;
-  }
-
-  .achievement-info p {
-    margin: 0 0 0.75rem 0;
-    color: #64748b;
-    font-size: 0.9rem;
-    line-height: 1.4;
-  }
-
-  .achievement-stats {
-    font-size: 0.8rem;
-    color: #6b7280;
-  }
-
-  .completion {
-    font-weight: 600;
-  }
-
-  /* Loading State */
   .loading-state {
-    padding: 4rem 2rem;
     text-align: center;
-    color: #64748b;
+    padding: 60px 20px;
+    color: #718096;
+    font-size: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
   }
 
   .loading-spinner {
-    font-size: 3rem;
-    margin-bottom: 1rem;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #4299e1;
+    border-radius: 50%;
     animation: spin 1s linear infinite;
   }
 
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  .table-header {
+    display: grid;
+    grid-template-columns: 100px 1fr 120px 100px 120px;
+    gap: 15px;
+    padding: 20px 25px;
+    background: #4a5568;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
   }
 
-  /* Responsive */
+  .table-body {
+    max-height: 600px;
+    overflow-y: auto;
+  }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 120px 100px 120px;
+    gap: 15px;
+    padding: 18px 25px;
+    border-bottom: 1px solid #e2e8f0;
+    transition: background 0.2s ease;
+  }
+
+  .table-row:hover {
+    background: #f7fafc;
+  }
+
+  .table-row.top-three {
+    background: linear-gradient(135deg, #fff9db, #fff3bf);
+  }
+
+  .table-row.current-user {
+    background: linear-gradient(135deg, #dbeafe, #93c5fd);
+    border-left: 4px solid #4299e1;
+  }
+
+  .rank-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .medal {
+    font-size: 1.5rem;
+  }
+
+  .rank-number {
+    font-weight: 600;
+    color: #718096;
+  }
+
+  .table-row.top-three .rank-number {
+    color: #d97706;
+    font-weight: 700;
+  }
+
+  .player-cell {
+    display: flex;
+    align-items: center;
+  }
+
+  .player-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .player-name {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 2px;
+  }
+
+  .player-country {
+    font-size: 0.8rem;
+    color: #718096;
+  }
+
+  .score-cell, .games-cell, .winrate-cell {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #2d3748;
+  }
+
+  .score-value {
+    color: #4299e1;
+    font-size: 1.1rem;
+  }
+
+  .table-footer {
+    padding: 15px 25px;
+    text-align: center;
+    background: #f7fafc;
+    color: #718096;
+    font-size: 0.9rem;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .cta-section {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 400px;
+    margin: 0 auto;
+    backdrop-filter: blur(10px);
+  }
+
+  .cta-section p {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+    opacity: 0.9;
+  }
+
+  .play-button {
+    background: #48bb78;
+    color: white;
+    padding: 12px 30px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    display: inline-block;
+    margin: 0 5px 10px;
+  }
+
+  .play-button:hover {
+    background: #38a169;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+  }
+
+  .secondary-button {
+    background: #718096;
+    color: white;
+    padding: 12px 30px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    display: inline-block;
+    margin: 0 5px 10px;
+  }
+
+  .secondary-button:hover {
+    background: #4a5568;
+    transform: translateY(-1px);
+  }
+
+  /* Animations */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Responsive Design */
   @media (max-width: 768px) {
-    .container {
-      padding: 0 1rem;
-    }
-
-    .header-nav {
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .page-title {
-      font-size: 2.5rem;
-    }
-
-    .user-stats-card {
-      flex-direction: column;
-      text-align: center;
-    }
-
     .user-stats-grid {
       grid-template-columns: repeat(2, 1fr);
     }
 
+    .table-header,
+    .table-row {
+      grid-template-columns: 60px 1fr 80px;
+      gap: 10px;
+      padding: 15px;
+    }
+
+    .games-cell, .winrate-cell {
+      display: none;
+    }
+
     .filters-section {
       flex-direction: column;
-      align-items: stretch;
+      align-items: center;
     }
 
-    .podium-section {
-      grid-template-columns: 1fr;
+    .leaderboard-header h1 {
+      font-size: 2rem;
     }
 
-    .categories-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .achievements-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .ranking-row {
-      padding: 0.75rem 1rem;
-    }
-
-    .player-meta {
-      flex-direction: column;
-      gap: 0.25rem;
+    .leaderboard-header p {
+      font-size: 1rem;
     }
   }
 
   @media (max-width: 480px) {
-    .page-title {
-      font-size: 2rem;
+    .leaderboard-container {
+      padding: 10px;
     }
 
-    .user-stats-grid {
-      grid-template-columns: 1fr;
+    .user-rank-card {
+      padding: 20px;
+      margin: 0 10px 20px;
     }
 
-    .podium-card {
-      padding: 1.5rem 1rem;
+    .leaderboard-table-container {
+      margin: 0 10px 30px;
     }
   }
 </style>
