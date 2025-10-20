@@ -1,23 +1,24 @@
-<script>
+<script lang="ts">
   import { supabase } from '$lib/supabase';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
 
-  let user = null;
-  let profile = null;
-  let room = null;
-  let players = [];
-  let messages = [];
-  let newMessage = '';
-  let selectedGame = null;
-  let isLoading = true;
-  let isHost = false;
-  
-  // Real-time subscriptions
-  let roomSubscription;
-  let playersSubscription;
-  let messagesSubscription;
+  // Basic runtime types to satisfy TS checking in Svelte components.
+  let user: any = null;
+  let profile: any = null;
+  let room: any = null;
+  let players: any[] = [];
+  let messages: any[] = [];
+  let newMessage: string = '';
+  let selectedGame: string | null = null;
+  let isLoading: boolean = true;
+  let isHost: boolean = false;
+
+  // Real-time subscriptions (supabase Realtime channels)
+  let roomSubscription: any;
+  let playersSubscription: any;
+  let messagesSubscription: any;
 
   // Games available
   const games = [
@@ -29,11 +30,14 @@
 
   $: roomId = $page.params.roomId;
 
-  onMount(async () => {
-    await checkAuth();
-    await loadRoomData();
-    setupRealTimeSubscriptions();
-    
+  // Don't make the onMount callback itself async if it returns a cleanup function.
+  onMount(() => {
+    (async () => {
+      await checkAuth();
+      await loadRoomData();
+      setupRealTimeSubscriptions();
+    })();
+
     return () => {
       // Cleanup subscriptions
       roomSubscription?.unsubscribe();
@@ -339,16 +343,17 @@
             <h2>Choose a Game</h2>
             <div class="games-grid">
               {#each games as game}
-                <div 
+                <button
+                  type="button"
                   class="game-card {selectedGame === game.id ? 'selected' : ''}"
-                  on:click={() => selectedGame = game.id}
+                  on:click={() => (selectedGame = game.id)}
                 >
                   <div class="game-icon">{game.icon}</div>
                   <div class="game-info">
                     <h3>{game.name}</h3>
                     <p>{game.description}</p>
                   </div>
-                </div>
+                </button>
               {/each}
             </div>
             

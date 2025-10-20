@@ -4,24 +4,30 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
 
-  let user = null;
-  let loading = true;
-  let tournament = null;
-  let currentSegment = 0;
-  let currentQuestion = 0;
-  let score = 0;
-  let timeLeft = 0;
-  let timer = null;
-  let selectedAnswer = null;
-  let gameState = 'waiting'; // waiting, playing, segmentTransition, finished
-  let playerRank = 0;
-  let correctAnswers = 0;
+  <script lang="ts">
+  import { onMount } from 'svelte';
+  import { supabase } from '$lib/supabase.js';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+
+  let user: any = null;
+  let loading: boolean = true;
+  let tournament: { id?: any; name?: string; prizePool?: number; totalPlayers?: number } | null = null;
+  let currentSegment: number = 0;
+  let currentQuestion: number = 0;
+  let score: number = 0;
+  let timeLeft: number = 0;
+  let timer: number | null = null;
+  let selectedAnswer: number | null = null;
+  let gameState: 'waiting' | 'playing' | 'segmentTransition' | 'answerFeedback' | 'finished' = 'waiting';
+  let playerRank: number = 0;
+  let correctAnswers: number = 0;
   
   // Hardcoded tournament segments and questions
   const tournamentSegments = [
     {
       category: 'General Knowledge',
-      questions: 5,
+      questionCount: 5,
       timePerQuestion: 25,
       icon: '💬',
       questions: [
@@ -59,7 +65,7 @@
     },
     {
       category: 'Kenyan History',
-      questions: 5,
+      questionCount: 5,
       timePerQuestion: 30,
       icon: '🇰🇪',
       questions: [
@@ -97,7 +103,7 @@
     },
     {
       category: 'Pop Culture',
-      questions: 5,
+      questionCount: 5,
       timePerQuestion: 20,
       icon: '🎬',
       questions: [
@@ -135,7 +141,7 @@
     },
     {
       category: 'Geography',
-      questions: 5,
+      questionCount: 5,
       timePerQuestion: 25,
       icon: '🌍',
       questions: [
@@ -173,7 +179,7 @@
     },
     {
       category: 'Science & Technology',
-      questions: 5,
+      questionCount: 5,
       timePerQuestion: 30,
       icon: '🔬',
       questions: [
@@ -211,15 +217,15 @@
     }
   ];
 
-  let segments = tournamentSegments;
-  let questions = [];
+  let segments: any[] = tournamentSegments;
+  let questions: any[] = [];
 
   $: currentCategory = segments[currentSegment]?.category || '';
   $: currentCategoryIcon = segments[currentSegment]?.icon || '';
-  $: totalQuestions = segments.reduce((total, seg) => total + seg.questions, 0);
-  $: questionsInCurrentSegment = segments[currentSegment]?.questions || 0;
-  $: progress = ((currentSegment * questionsInCurrentSegment + currentQuestion) / totalQuestions) * 100;
-  $: scorePercentage = Math.round((correctAnswers / totalQuestions) * 100);
+  $: totalQuestions: number = segments.reduce((total: number, seg: any) => total + (seg.questionCount || 0), 0);
+  $: questionsInCurrentSegment: number = segments[currentSegment]?.questionCount || 0;
+  $: progress = ((currentSegment * questionsInCurrentSegment + currentQuestion) / (totalQuestions || 1)) * 100;
+  $: scorePercentage = Math.round((correctAnswers / (totalQuestions || 1)) * 100);
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -253,20 +259,20 @@
     loadSegmentQuestions(0);
   }
 
-  function loadSegmentQuestions(segmentIndex) {
+  function loadSegmentQuestions(segmentIndex: number) {
     currentSegment = segmentIndex;
     currentQuestion = 0;
-    questions = segments[segmentIndex].questions;
+    questions = segments[segmentIndex].questions || [];
     startQuestionTimer();
   }
 
   function startQuestionTimer() {
     timeLeft = segments[currentSegment].timePerQuestion;
-    if (timer) clearInterval(timer);
-    
-    timer = setInterval(() => {
+    if (timer) window.clearInterval(timer);
+
+    timer = window.setInterval(() => {
       timeLeft--;
-      
+
       if (timeLeft <= 0) {
         handleTimeUp();
       }
@@ -274,7 +280,7 @@
   }
 
   function handleTimeUp() {
-    clearInterval(timer);
+    if (timer) window.clearInterval(timer);
     if (selectedAnswer === null) {
       // Auto-submit no answer
       setTimeout(() => {
@@ -283,15 +289,15 @@
     }
   }
 
-  function selectAnswer(index) {
+  function selectAnswer(index: number) {
     selectedAnswer = index;
   }
 
   function submitAnswer() {
-    clearInterval(timer);
-    
+    if (timer) window.clearInterval(timer);
+
     // Check if answer is correct
-    const isCorrect = selectedAnswer === questions[currentQuestion].correctAnswer;
+    const isCorrect = selectedAnswer === questions[currentQuestion]?.correctAnswer;
     
     if (isCorrect) {
       correctAnswers++;

@@ -1,13 +1,13 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase.js';
 
-  let leaderboard = [];
-  let userRank = null;
-  let loading = true;
-  let timeFilter = 'all_time';
-  let gameTypeFilter = 'all_games';
-  let user = null;
+  let leaderboard: any[] = [];
+  let userRank: any = null;
+  let loading: boolean = true;
+  let timeFilter: string = 'all_time';
+  let gameTypeFilter: string = 'all_games';
+  let user: any = null;
 
   onMount(async () => {
     await loadLeaderboard();
@@ -160,16 +160,16 @@
   <!-- Filters -->
   <div class="filters-section">
     <div class="filter-group">
-      <label>Time Period:</label>
-      <select bind:value={timeFilter}>
+      <label for="timeFilter">Time Period:</label>
+      <select id="timeFilter" bind:value={timeFilter}>
         <option value="all_time">All Time</option>
         <option value="weekly">This Week</option>
         <option value="monthly">This Month</option>
       </select>
     </div>
     <div class="filter-group">
-      <label>Game Type:</label>
-      <select bind:value={gameTypeFilter}>
+      <label for="gameTypeFilter">Game Type:</label>
+      <select id="gameTypeFilter" bind:value={gameTypeFilter}>
         <option value="all_games">All Games</option>
         <option value="quick_play">Quick Play</option>
         <option value="tournament">Tournaments</option>

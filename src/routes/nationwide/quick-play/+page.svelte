@@ -1,21 +1,21 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase.js';
   import { goto } from '$app/navigation';
 
-  let user = null;
-  let loading = true;
-  let gameState = 'idle'; // 'idle', 'playing', 'finished'
-  let currentQuestion = 0;
-  let score = 0;
-  let timeLeft = 20;
-  let timer = null;
-  let questions = [];
-  let selectedAnswer = null;
+  let user: any = null;
+  let loading: boolean = true;
+  let gameState: 'idle' | 'playing' | 'finished' = 'idle';
+  let currentQuestion: number = 0;
+  let score: number = 0;
+  let timeLeft: number = 20;
+  let timer: number | null = null;
+  let questions: any[] = [];
+  let selectedAnswer: number | null = null;
   let gameStats = {
     totalPlayers: 500,
     averageScore: 70
-  };
+  } as { totalPlayers: number; averageScore: number };
 
   // Mock questions - replace with real API call
   const mockQuestions = [
@@ -105,11 +105,11 @@
 
   function startTimer() {
     timeLeft = 20;
-    if (timer) clearInterval(timer);
-    
-    timer = setInterval(() => {
+    if (timer) window.clearInterval(timer);
+
+    timer = window.setInterval(() => {
       timeLeft--;
-      
+
       if (timeLeft <= 0) {
         handleTimeUp();
       }
@@ -117,7 +117,7 @@
   }
 
   function handleTimeUp() {
-    clearInterval(timer);
+    if (timer) window.clearInterval(timer);
     // Auto-submit if time runs out
     if (selectedAnswer === null) {
       // No answer selected, move to next question
@@ -125,12 +125,12 @@
     }
   }
 
-  function selectAnswer(index) {
+  function selectAnswer(index: number) {
     selectedAnswer = index;
   }
 
   function submitAnswer() {
-    clearInterval(timer);
+    if (timer) window.clearInterval(timer);
     
     // Check if answer is correct
     if (selectedAnswer === questions[currentQuestion].correctAnswer) {
@@ -155,7 +155,7 @@
 
   function finishGame() {
     gameState = 'finished';
-    clearInterval(timer);
+    if (timer) window.clearInterval(timer);
     
     // Save score to database
     saveGameResult();

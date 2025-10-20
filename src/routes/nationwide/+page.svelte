@@ -1,9 +1,9 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase.js';
   import { goto } from '$app/navigation';
   
-  let user = null;
+  let user: any = null;
   let playerStats = {
     rank: 15,
     points: 1250,
@@ -70,7 +70,7 @@
     goto('/auth');
   }
 
-  function joinTournament(tournamentId) {
+  function joinTournament(tournamentId: number | string) {
     if (!user) {
       goto('/auth');
       return;

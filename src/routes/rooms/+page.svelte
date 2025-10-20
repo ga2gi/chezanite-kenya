@@ -1,19 +1,21 @@
-<script>
+<script lang="ts">
   import { supabase } from '$lib/supabase';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
 
-  let user = null;
-  let profile = null;
-  let roomCode = '';
-  let roomName = '';
-  let isLoading = false;
-  let activeRooms = [];
-  let isCreating = false;
-  let isJoining = false;
+  let user: any = null;
+  let profile: any = null;
+  let roomCode: string = '';
+  let roomName: string = '';
+  let isLoading: boolean = false;
+  let activeRooms: any[] = [];
+  let isCreating: boolean = false;
+  let isJoining: boolean = false;
 
-  onMount(async () => {
-    await checkAuth();
+  onMount(() => {
+    (async () => {
+      await checkAuth();
+    })();
   });
 
   async function checkAuth() {
@@ -183,21 +185,21 @@
     }
   }
 
-  function quickJoinRoom(roomId) {
+  function quickJoinRoom(roomId: string) {
     goto(`/rooms/${roomId}`);
   }
 
-  function copyRoomCode(code) {
+  function copyRoomCode(code: string) {
     navigator.clipboard.writeText(code);
     alert('Room code copied!');
   }
 
-  function handleCreateKeyPress(e) {
-    if (e.key === 'Enter') createRoom();
+  function handleCreateKeyPress(e: KeyboardEvent) {
+    if ((e as KeyboardEvent).key === 'Enter') createRoom();
   }
 
-  function handleJoinKeyPress(e) {
-    if (e.key === 'Enter') joinRoom();
+  function handleJoinKeyPress(e: KeyboardEvent) {
+    if ((e as KeyboardEvent).key === 'Enter') joinRoom();
   }
 </script>
 

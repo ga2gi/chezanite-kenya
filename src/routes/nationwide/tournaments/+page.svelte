@@ -1,13 +1,13 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase.js';
   import { goto } from '$app/navigation';
 
-  let user = null;
-  let loading = true;
-  let tournaments = [];
-  let categories = [];
-  let userParticipations = [];
+  let user: any = null;
+  let loading: boolean = true;
+  let tournaments: any[] = [];
+  let categories: any[] = [];
+  let userParticipations: (string | number)[] = [];
 
   // TEST MODE: Changed start date to current time for immediate testing
   const firstTournament = {
@@ -79,7 +79,7 @@
     userParticipations = []; // Start with empty for testing
   }
 
-  function joinTournament(tournamentId) {
+  function joinTournament(tournamentId: string | number) {
     if (!user) {
       goto('/auth');
       return;
@@ -96,7 +96,7 @@
     alert('Successfully joined the tournament! Redirecting to gameplay...');
   }
 
-  function formatDate(dateString) {
+  function formatDate(dateString: string) {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-KE', {
       weekday: 'long',
@@ -108,7 +108,7 @@
     });
   }
 
-  function getTimeUntil(startDate) {
+  function getTimeUntil(startDate: string) {
     const now = new Date();
     const start = new Date(startDate);
     const diff = start - now;
