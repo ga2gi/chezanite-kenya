@@ -1,14 +1,14 @@
-<script>
+<script lang="ts">
   import { supabase } from '$lib/supabase.js';
   import { goto } from '$app/navigation';
 
-  let email = '';
-  let loading = false;
-  let error = null;
-  let success = false;
-  let step = 'input'; // input, sent, success
+  let email: string = '';
+  let loading: boolean = false;
+  let error: string | null = null;
+  let success: boolean = false;
+  let step: 'input' | 'sent' | 'success' = 'input';
 
-  async function handleMagicLink() {
+  async function handleMagicLink(): Promise<void> {
     if (!email) {
       error = 'Please enter your email address';
       return;
@@ -36,25 +36,26 @@
         step = 'sent';
         success = true;
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      console.error('Magic link error', err);
       error = 'Failed to send magic link. Please try again.';
     } finally {
       loading = false;
     }
   }
 
-  function isValidEmail(email) {
+  function isValidEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
-  function resetForm() {
+  function resetForm(): void {
     email = '';
     step = 'input';
     success = false;
     error = null;
   }
 
-  async function handleQuickTest() {
+  async function handleQuickTest(): Promise<void> {
     // For testing, create a random test email
     email = `test${Math.floor(Math.random() * 10000)}@chezanie.com`;
     await handleMagicLink();

@@ -1,18 +1,53 @@
 import { supabase } from '$lib/supabase.js';
 
+/**
+ * @typedef {Object} Question
+ * @property {string|number} id
+ * @property {string} question_text
+ * @property {string} option1
+ * @property {string} option2
+ * @property {string} option3
+ * @property {string} option4
+ * @property {number} correct_answer
+ * @property {string} [category]
+ */
+
 export class QuickPlayGame {
   constructor() {
+    /** @type {string|null} */
     this.sessionId = null;
+
+    /** @type {Question[]} */
     this.questions = [];
+
+    /** @type {number} */
     this.currentQuestionIndex = 0;
+
+    /** @type {number} */
     this.score = 0;
+
+    /** @type {number} */
     this.streak = 0;
+
+    /** @type {number} */
     this.timeRemaining = 20;
+
+    /**
+     * In browsers setInterval returns a number; in Node it returns a Timeout object.
+     * Use a nullable any here to be compatible with both runtimes when checkJs is enabled.
+     * @type {number|object|null}
+     */
     this.interval = null;
+
+    /** @type {string|null} */
     this.userId = null;
   }
 
   // Start a new quick play session
+  /**
+   * Start a new quick play session
+   * @param {string} userId
+   */
   async startGame(userId) {
     try {
       console.log('Starting game for user:', userId);
@@ -54,13 +89,18 @@ export class QuickPlayGame {
         currentQuestion: this.questions[0]
       };
       
-    } catch (error) {
-      console.error('Error starting game:', error);
-      return { success: false, error: error.message };
+    } catch (err) {
+      console.error('Error starting game:', err);
+      const message = (err && typeof err === 'object' && 'message' in err) ? err.message : String(err);
+      return { success: false, error: message };
     }
   }
 
   // Load questions from database
+  /**
+   * Load questions from DB or use sample fallback
+   * @returns {Promise<void>}
+   */
   async loadQuestions() {
     try {
       console.log('Loading questions...');
@@ -82,8 +122,8 @@ export class QuickPlayGame {
         this.questions = this.getSampleQuestions();
       }
 
-    } catch (error) {
-      console.error('Error in loadQuestions:', error);
+    } catch (err) {
+      console.error('Error in loadQuestions:', err);
       this.questions = this.getSampleQuestions();
     }
   }
@@ -149,10 +189,11 @@ export class QuickPlayGame {
     console.log('Starting timer');
     this.timeRemaining = 20;
     
-    if (this.interval) {
-      clearInterval(this.interval);
+    if (this.interval != null) {
+      try { clearInterval(/** @type {any} */ (this.interval)); } catch (e) { /* ignore */ }
     }
     
+    // assign the interval (may be number in browser or object in Node)
     this.interval = setInterval(() => {
       this.timeRemaining--;
       
@@ -164,20 +205,30 @@ export class QuickPlayGame {
 
   handleTimeUp() {
     console.log('Time up!');
-    clearInterval(this.interval);
+    if (this.interval != null) {
+      try { clearInterval(/** @type {any} */ (this.interval)); } catch (e) { /* ignore */ }
+      this.interval = null;
+    }
     this.submitAnswer(-1);
   }
 
   // Handle player answer
+  /**
+   * Submit an answer for the current question
+   * @param {number} selectedOptionIndex
+   */
   async submitAnswer(selectedOptionIndex) {
     console.log('Submitting answer:', selectedOptionIndex);
-    clearInterval(this.interval);
+    if (this.interval != null) {
+      try { clearInterval(/** @type {any} */ (this.interval)); } catch (e) { /* ignore */ }
+      this.interval = null;
+    }
     
     const currentQuestion = this.questions[this.currentQuestionIndex];
     const isCorrect = selectedOptionIndex === currentQuestion.correct_answer;
     
     // Calculate score (skip if time up)
-    const points = selectedOptionIndex === -1 ? 0 : this.calculateScore(isCorrect);
+  const points = selectedOptionIndex === -1 ? 0 : this.calculateScore(isCorrect);
     this.score += points;
     
     // Update streak
@@ -191,7 +242,7 @@ export class QuickPlayGame {
 
     // Record answer in database (non-blocking)
     if (this.sessionId && this.userId && selectedOptionIndex !== -1) {
-      this.recordAnswer(selectedOptionIndex, isCorrect, points).catch(console.error);
+      this.recordAnswer(selectedOptionIndex, isCorrect, points).catch((e) => console.error('recordAnswer error', e));
     }
 
     // Move to next question or end game
@@ -207,6 +258,11 @@ export class QuickPlayGame {
     };
   }
 
+  /**
+   * Calculate score for a single question
+   * @param {boolean} isCorrect
+   * @returns {number}
+   */
   calculateScore(isCorrect) {
     if (!isCorrect) return 0;
     
@@ -217,6 +273,12 @@ export class QuickPlayGame {
     return basePoints + timeBonus + streakBonus;
   }
 
+  /**
+   * Record an answer in the database (best-effort)
+   * @param {number} selectedOption
+   * @param {boolean} isCorrect
+   * @param {number} points
+   */
   async recordAnswer(selectedOption, isCorrect, points) {
     try {
       const { error } = await supabase
@@ -239,7 +301,8 @@ export class QuickPlayGame {
         console.log('Answer recorded successfully');
       }
     } catch (error) {
-      console.error('Error recording answer:', error);
+      const msg = (error && typeof error === 'object' && 'message' in error) ? error.message : String(error);
+      console.error('Error recording answer:', msg);
     }
   }
 
@@ -260,7 +323,10 @@ export class QuickPlayGame {
 
   async endGame() {
     console.log('Ending game...');
-    clearInterval(this.interval);
+    if (this.interval != null) {
+      try { clearInterval(/** @type {any} */ (this.interval)); } catch (e) { /* ignore */ }
+      this.interval = null;
+    }
     
     // Update game session as completed
     if (this.sessionId) {
@@ -299,8 +365,9 @@ export class QuickPlayGame {
   }
 
   cleanup() {
-    if (this.interval) {
-      clearInterval(this.interval);
+    if (this.interval != null) {
+      try { clearInterval(/** @type {any} */ (this.interval)); } catch (e) { /* ignore */ }
+      this.interval = null;
     }
   }
 }

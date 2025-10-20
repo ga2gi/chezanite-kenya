@@ -208,7 +208,7 @@
     <!-- Hero Section -->
     <section class="hero-section">
       <h1 class="hero-title">Game Rooms</h1>
-      <p class="hero-subtitle">Create a room and get access to ALL games!</p>
+      <p class="hero-subtitle">COMING SOON!</p>
       
       {#if user}
         <p class="welcome-text">Welcome, {profile?.display_name || user.email}!</p>

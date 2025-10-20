@@ -1,144 +1,232 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabase.js';
   import { goto } from '$app/navigation';
-  
+  import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+
+  // Mock user data - replace with your actual auth store
   let user: any = null;
-  let playerStats = {
-    rank: 15,
-    points: 1250,
-    streak: 3,
-    totalGames: 18,
-    winRate: 70,
-    bestScore: 480
-  };
+  let isSubscribed = false;
+  let userSubscription: any = null;
 
-  let featuredTournaments = [
-    {
-      id: 1,
-      name: "Monday Night Trivia",
-      status: "UPCOMING",
-      schedule: "Mon, 8:00 PM",
-      duration: "10 mins",
-      playersJoined: 11,
-      description: "20 questions, 30 seconds each",
-      type: "premium",
-      entryFee: "Premium",
-      prize: "KSH 5,000"
-    },
-    {
-      id: 2,
-      name: "Midweek Challenge", 
-      status: "UPCOMING",
-      schedule: "Wed, 8:00 PM",
-      duration: "10 mins",
-      playersJoined: 33,
-      description: "General knowledge & fun facts",
-      type: "premium",
-      entryFee: "Premium",
-      prize: "KSH 3,000"
-    },
-    {
-      id: 3,
-      name: "Friday Game Night",
-      status: "UPCOMING",
-      schedule: "Fri, 8:00 PM",
-      duration: "10 mins",
-      playersJoined: 55,
-      description: "Mix of pop culture & trivia",
-      type: "premium",
-      entryFee: "Premium",
-      prize: "KSH 7,000"
-    }
-  ];
-
-  onMount(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    user = session?.user;
-    
-    if (user) {
-      await loadPlayerStats();
+  onMount(() => {
+    // Check if user is logged in and subscribed
+    // This would typically come from your auth store
+    if (browser) {
+      // Mock user data for demonstration
+      user = {
+        id: '1',
+        username: 'demo_user',
+        subscription: null // Change to active subscription to test subscribed state
+      };
+      
+      userSubscription = user?.subscription;
+      isSubscribed = userSubscription?.status === 'active';
     }
   });
 
-  async function loadPlayerStats() {
-    // In a real app, you'd fetch this from your database
-    console.log('Loading player stats for:', user.id);
-  }
+  // Mock data for tournaments
+  const featuredTournaments = [
+    {
+      id: '1',
+      name: 'Friday Game Night Mega Tournament',
+      prizePool: 15000,
+      players: 87,
+      maxPlayers: 100,
+      startTime: 'Today, 8:00 PM',
+      requiresSubscription: true,
+      subscriptionTier: 'basic',
+      description: 'Weekly mega tournament for all subscribers'
+    },
+    {
+      id: '2',
+      name: 'Premium Championship',
+      prizePool: 50000,
+      players: 45,
+      maxPlayers: 50,
+      startTime: 'Tomorrow, 7:00 PM',
+      requiresSubscription: true,
+      subscriptionTier: 'premium',
+      description: 'Exclusive high-stakes tournament for premium members'
+    },
+    {
+      id: '3',
+      name: 'Quick Fire Daily',
+      prizePool: 5000,
+      players: 23,
+      maxPlayers: 200,
+      startTime: 'Ongoing',
+      requiresSubscription: true,
+      subscriptionTier: 'basic',
+      description: 'Fast-paced daily tournament'
+    }
+  ];
 
-  function goToAuth() {
-    goto('/auth');
-  }
+  const subscriptionBenefits = [
+    {
+      icon: '🎮',
+      title: 'Unlimited Tournament Access',
+      description: 'Join any tournament for free once subscribed'
+    },
+    {
+      icon: '💰',
+      title: 'Zero Entry Fees',
+      description: 'No additional costs to join premium tournaments'
+    },
+    {
+      icon: '🏆',
+      title: 'Bigger Prize Pools',
+      description: 'Access tournaments with larger cash prizes'
+    },
+    {
+      icon: '⚡',
+      title: 'Priority Registration',
+      description: 'Early access to popular tournaments'
+    }
+  ];
 
-  function joinTournament(tournamentId: number | string) {
-    if (!user) {
-      goto('/auth');
+  function navigateToQuickPlay(): void {
+    if (!isSubscribed) {
+      goto('/subscribe');
       return;
     }
-    alert(`Joining tournament ${tournamentId} - Premium feature coming soon!`);
+    goto('/nationwide/quick-play');
   }
 
-  function viewAllTournaments() {
+  function navigateToTournaments(): void {
     goto('/nationwide/tournaments');
+  }
+
+  function navigateToTournament(id: string): void {
+    if (!isSubscribed) {
+      goto('/subscribe');
+      return;
+    }
+    goto(`/nationwide/tournaments/${id}`);
+  }
+
+  function handleJoinTournament(tournament: any): void {
+    if (!isSubscribed) {
+      goto('/subscribe');
+      return;
+    }
+    
+    if (userSubscription?.tier === 'basic' && tournament.subscriptionTier === 'premium') {
+      goto('/upgrade');
+      return;
+    }
+    
+    navigateToTournament(tournament.id);
+  }
+
+  function navigateToSubscribe(): void {
+    goto('/subscribe');
+  }
+
+  function navigateToLogin(): void {
+    goto('/auth/login');
   }
 </script>
 
+<svelte:head>
+  <title>Nationwide - ChezaNite</title>
+</svelte:head>
+
 <div class="nationwide-container">
-  <!-- Header -->
-  <header class="game-header">
+  <!-- Header Section -->
+  <header class="nationwide-header">
     <div class="header-content">
-      <h1>Nationwide Games</h1>
-      <p>Compete with players across Kenya in real-time tournaments</p>
+      <h1 class="main-title">Nationwide Games</h1>
+      <p class="subtitle">Unlimited tournament access with subscription!</p>
+      
+      {#if !user}
+        <div class="auth-cta">
+          <p>Join thousands of players competing nationwide</p>
+          <div class="auth-buttons">
+            <button class="login-button" on:click={navigateToLogin}>
+              Sign In
+            </button>
+            <button class="subscribe-button" on:click={navigateToSubscribe}>
+              Get Started Free
+            </button>
+          </div>
+        </div>
+      {:else if !isSubscribed}
+        <div class="subscription-cta">
+          <p>Subscribe now to join all tournaments for FREE!</p>
+          <button class="subscribe-button" on:click={navigateToSubscribe}>
+            Get Subscription - KSH 299/month
+          </button>
+        </div>
+      {:else}
+        <div class="subscription-status">
+          <div class="status-badge {userSubscription.tier}">
+            {userSubscription.tier.toUpperCase()} SUBSCRIBER
+          </div>
+          <p>Welcome back! Enjoy unlimited tournament access.</p>
+        </div>
+      {/if}
     </div>
   </header>
 
-  <!-- Sign In Prompt -->
-  {#if !user}
-    <div class="signin-prompt">
-      <div class="signin-card">
-        <h3>Sign In to Play</h3>
-        <p>Create an account to play games and compete on the leaderboard</p>
-        <button on:click={goToAuth} class="signin-button">Sign In / Sign Up</button>
+  <!-- Subscription Benefits -->
+  {#if !isSubscribed}
+    <section class="benefits-section">
+      <h2 class="section-title">Why Subscribe?</h2>
+      <div class="benefits-grid">
+        {#each subscriptionBenefits as benefit}
+          <div class="benefit-card">
+            <div class="benefit-icon">{benefit.icon}</div>
+            <h3 class="benefit-title">{benefit.title}</h3>
+            <p class="benefit-description">{benefit.description}</p>
+          </div>
+        {/each}
       </div>
-    </div>
+    </section>
   {/if}
 
-  <!-- Player Stats (only show if signed in) -->
-  {#if user}
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-number bronze">#{playerStats.rank}</div>
-        <div class="stat-label">Your Rank</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">{playerStats.points}</div>
-        <div class="stat-label">Points</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">{playerStats.streak}</div>
-        <div class="stat-label">Win Streak</div>
-      </div>
-    </div>
-  {/if}
-
-  <!-- Quick Play Section -->
-  <section class="game-section">
-    <div class="game-card quick-play-card">
-      <div class="game-info">
-        <h2>Quick Play</h2>
-        <p class="game-description">10 questions, 20 seconds each. Play anytime!</p>
-        <div class="game-meta">
-          <span class="price-tag free">FREE</span>
-          <span class="time-estimate">~5 mins</span>
+  <!-- Quick Actions Section -->
+  <section class="quick-actions-section">
+    <h2 class="section-title">Get Started</h2>
+    <div class="actions-grid">
+      <button type="button" class="action-card quick-play-card" on:click={navigateToQuickPlay} aria-label="Quick Play">
+        <div class="action-icon">6A1</div>
+        <h3 class="action-title">Quick Play</h3>
+        <p class="action-description">Jump into an instant game against random opponents</p>
+        <div class="action-features">
+          <span class="feature-tag">Instant Match</span>
+          <span class="feature-tag">{#if isSubscribed}Free{:else}Subscription{/if}</span>
+          <span class="feature-tag">Quick Prizes</span>
         </div>
-      </div>
-      <div class="game-action">
-        {#if user}
-          <a href="/nationwide/quick-play" class="play-button">Play Now</a>
-        {:else}
-          <button on:click={goToAuth} class="play-button">Sign In to Play</button>
-        {/if}
-      </div>
+        <span class="action-button {isSubscribed ? 'primary' : 'secondary'}">
+          {#if !user}
+            Sign In to Play
+          {:else if isSubscribed}
+            Play Now
+          {:else}
+            Subscribe to Play
+          {/if}
+        </span>
+      </button>
+
+      <button type="button" class="action-card tournaments-card" on:click={navigateToTournaments} aria-label="Tournaments">
+        <div class="action-icon">3C6</div>
+        <h3 class="action-title">Tournaments</h3>
+        <p class="action-description">Join scheduled tournaments with bigger prize pools</p>
+        <div class="action-features">
+          <span class="feature-tag">Scheduled</span>
+          <span class="feature-tag">{#if isSubscribed}Free{:else}Subscription{/if}</span>
+          <span class="feature-tag">Big Prizes</span>
+        </div>
+        <span class="action-button {isSubscribed ? 'primary' : 'secondary'}">
+          {#if !user}
+            Sign In to View
+          {:else if isSubscribed}
+            View Tournaments
+          {:else}
+            Subscribe to Join
+          {/if}
+        </span>
+      </button>
     </div>
   </section>
 
@@ -146,100 +234,123 @@
   <section class="tournaments-section">
     <div class="section-header">
       <h2 class="section-title">Featured Tournaments</h2>
-      <p class="section-subtitle">Join scheduled events with players across Kenya</p>
-      <button on:click={viewAllTournaments} class="view-all-button">View All Tournaments →</button>
+      <button class="view-all-button" on:click={navigateToTournaments}>
+        View All
+      </button>
     </div>
 
     <div class="tournaments-grid">
       {#each featuredTournaments as tournament}
         <div class="tournament-card">
           <div class="tournament-header">
-            <h3>{tournament.name}</h3>
-            <span class="tournament-status {tournament.status.toLowerCase()}">{tournament.status}</span>
+            <h3 class="tournament-name">{tournament.name}</h3>
+            <div class="tournament-prize">KSH {tournament.prizePool.toLocaleString()}</div>
+          </div>
+          
+          <div class="tournament-description">
+            {tournament.description}
           </div>
           
           <div class="tournament-details">
             <div class="detail-item">
-              <span class="detail-icon">🕒</span>
-              <span>{tournament.schedule}</span>
+              <span class="detail-label">Players:</span>
+              <span class="detail-value">{tournament.players}/{tournament.maxPlayers}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-icon">⏱️</span>
-              <span>{tournament.duration}</span>
+              <span class="detail-label">Starts:</span>
+              <span class="detail-value">{tournament.startTime}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-icon">👥</span>
-              <span>{tournament.playersJoined} players joined</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-icon">💰</span>
-              <span>Prize: {tournament.prize}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-icon">❓</span>
-              <span>{tournament.description}</span>
+              <span class="detail-label">Access:</span>
+              <span class="detail-value subscription-tier {tournament.subscriptionTier}">
+                {tournament.subscriptionTier.toUpperCase()} SUBSCRIBERS
+              </span>
             </div>
           </div>
 
-          <div class="tournament-footer">
-            <span class="tournament-type {tournament.type}">{tournament.entryFee}</span>
-            <button 
-              on:click={() => joinTournament(tournament.id)}
-              class="tournament-button {tournament.type}"
-            >
-              {tournament.type === 'premium' ? 'Premium Required' : 'Join Tournament'}
-            </button>
+          <div class="tournament-actions">
+            {#if !user}
+              <button class="join-button signin-required" on:click={navigateToLogin}>
+                Sign In to Join
+              </button>
+            {:else if !isSubscribed}
+              <button class="join-button subscribe-required" on:click={() => handleJoinTournament(tournament)}>
+                Subscribe to Join
+              </button>
+            {:else if userSubscription.tier === 'basic' && tournament.subscriptionTier === 'premium'}
+              <button class="join-button upgrade-required" on:click={() => handleJoinTournament(tournament)}>
+                Upgrade to Premium
+              </button>
+            {:else}
+              <button class="join-button free" on:click={() => handleJoinTournament(tournament)}>
+                Join Free
+              </button>
+            {/if}
           </div>
         </div>
       {/each}
     </div>
   </section>
 
-  <!-- How to Play Section -->
-  <section class="how-to-play">
-    <h2 class="section-title">How to Play</h2>
-    <div class="steps-grid">
-      <div class="step-card">
-        <div class="step-number">1</div>
-        <h3>Choose Your Mode</h3>
-        <p>Play with friends in private rooms or compete nationwide</p>
-      </div>
-      <div class="step-card">
-        <div class="step-number">2</div>
-        <h3>Join the Fun</h3>
-        <p>Enter a room code or jump into a nationwide tournament</p>
-      </div>
-      <div class="step-card">
-        <div class="step-number">3</div>
-        <h3>Play & Connect</h3>
-        <p>Enjoy exciting games and make unforgettable memories</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Premium CTA Section -->
-  <section class="premium-cta">
-    <div class="premium-card">
-      <div class="premium-content">
-        <h2>Get Unlimited Access</h2>
-        <p class="premium-description">Play all tournaments, climb leaderboards, and compete nationwide</p>
-        
-        <div class="pricing">
-          <div class="price-amount">KSH 100</div>
-          <div class="price-period">first month, then KSH 299/month</div>
+  <!-- Subscription Tiers Comparison -->
+  {#if user && !isSubscribed}
+    <section class="tiers-section">
+      <h2 class="section-title">Choose Your Plan</h2>
+      <div class="tiers-grid">
+        <div class="tier-card basic">
+          <div class="tier-header">
+            <h3 class="tier-name">Basic</h3>
+            <div class="tier-price">KSH 299<span class="period">/month</span></div>
+          </div>
+          <ul class="tier-features">
+            <li>✅ Access to Basic tournaments</li>
+            <li>✅ Unlimited Quick Play</li>
+            <li>✅ Daily tournaments</li>
+            <li>✅ Prize pools up to KSH 50,000</li>
+            <li>❌ Premium tournaments</li>
+            <li>❌ Early access</li>
+          </ul>
+          <button class="tier-button" on:click={navigateToSubscribe}>
+            Subscribe Now
+          </button>
         </div>
 
-        <button class="premium-button">Subscribe Now</button>
+        <div class="tier-card premium featured">
+          <div class="tier-badge">MOST POPULAR</div>
+          <div class="tier-header">
+            <h3 class="tier-name">Premium</h3>
+            <div class="tier-price">KSH 599<span class="period">/month</span></div>
+          </div>
+          <ul class="tier-features">
+            <li>✅ Access to ALL tournaments</li>
+            <li>✅ Unlimited Quick Play</li>
+            <li>✅ Daily & Weekly tournaments</li>
+            <li>✅ Prize pools up to KSH 200,000</li>
+            <li>✅ Early tournament access</li>
+            <li>✅ Priority support</li>
+          </ul>
+          <button class="tier-button primary" on:click={navigateToSubscribe}>
+            Go Premium
+          </button>
+        </div>
       </div>
-      
-      <div class="premium-features">
-        <div class="feature-item">✅ All Tournaments</div>
-        <div class="feature-item">✅ Priority Matchmaking</div>
-        <div class="feature-item">✅ Exclusive Badges</div>
-        <div class="feature-item">✅ Ad-Free Experience</div>
+    </section>
+  {:else if !user}
+    <section class="signup-section">
+      <div class="signup-cta">
+        <h2>Ready to Start Playing?</h2>
+        <p>Join thousands of players competing for amazing prizes</p>
+        <div class="cta-buttons">
+          <button class="cta-button secondary" on:click={navigateToLogin}>
+            Sign In
+          </button>
+          <button class="cta-button primary" on:click={navigateToSubscribe}>
+            Start Free Trial
+          </button>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  {/if}
 </div>
 
 <style>
@@ -248,220 +359,263 @@
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     padding: 20px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   }
 
-  .game-header {
+  .nationwide-header {
     text-align: center;
+    padding: 40px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
     margin-bottom: 40px;
-    padding: 20px 0;
+    backdrop-filter: blur(10px);
   }
 
-  .game-header h1 {
-    font-size: 2.5rem;
-    font-weight: bold;
+  .main-title {
+    font-size: 3rem;
+    font-weight: 700;
     margin-bottom: 10px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    background: linear-gradient(45deg, #fff, #ffd700);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  .game-header p {
+  .subtitle {
     font-size: 1.2rem;
     opacity: 0.9;
-    max-width: 600px;
+    max-width: 500px;
     margin: 0 auto;
   }
 
-  .signin-prompt {
-    max-width: 500px;
-    margin: 0 auto 40px;
-  }
-
-  .signin-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
+  .auth-cta {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 15px;
-    padding: 25px;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 20px;
+    margin-top: 20px;
   }
 
-  .signin-card h3 {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-    font-weight: 600;
+  .auth-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 15px;
+    flex-wrap: wrap;
   }
 
-  .signin-card p {
-    margin-bottom: 20px;
-    opacity: 0.9;
-  }
-
-  .signin-button {
-    background: #48bb78;
+  .login-button {
+    background: transparent;
     color: white;
-    border: none;
-    padding: 12px 30px;
-    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 12px 25px;
+    border-radius: 25px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
   }
 
-  .signin-button:hover {
-    background: #38a169;
-    transform: translateY(-1px);
+  .login-button:hover {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.1);
   }
 
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    max-width: 400px;
-    margin: 0 auto 40px;
-  }
-
-  .stat-card {
-    background: white;
-    color: #2d3748;
-    padding: 25px 15px;
-    border-radius: 12px;
+  .subscription-cta {
+    background: rgba(255, 215, 0, 0.1);
+    border: 2px solid #ffd700;
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
     text-align: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease;
   }
 
-  .stat-card:hover {
+  .subscribe-button {
+    background: #ffd700;
+    color: #1a237e;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 25px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .subscribe-button:hover {
+    background: #ffed4a;
     transform: translateY(-2px);
   }
 
-  .stat-number {
-    font-size: 2rem;
-    font-weight: bold;
-    margin-bottom: 8px;
-  }
-
-  .stat-number.bronze {
-    color: #cd7f32;
-  }
-
-  .stat-value {
-    font-size: 2rem;
-    font-weight: bold;
-    margin-bottom: 8px;
-    color: #4299e1;
-  }
-
-  .stat-label {
-    font-size: 0.9rem;
-    color: #718096;
-    font-weight: 500;
-  }
-
-  .game-section {
-    margin-bottom: 40px;
-  }
-
-  .game-card {
-    background: white;
-    border-radius: 15px;
-    padding: 30px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-
-  .quick-play-card {
-    border-left: 5px solid #48bb78;
-  }
-
-  .game-info {
-    flex: 1;
-  }
-
-  .game-info h2 {
-    font-size: 1.8rem;
-    font-weight: bold;
-    color: #2d3748;
-    margin-bottom: 8px;
-  }
-
-  .game-description {
-    color: #718096;
-    font-size: 1.1rem;
-    margin-bottom: 15px;
-  }
-
-  .game-meta {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-  }
-
-  .price-tag {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-
-  .price-tag.free {
-    background: #c6f6d5;
-    color: #276749;
-  }
-
-  .time-estimate {
-    color: #718096;
-    font-size: 0.9rem;
-  }
-
-  .game-action {
-    margin-left: 20px;
-  }
-
-  .play-button {
-    background: #4299e1;
-    color: white;
-    padding: 12px 30px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.2s ease;
-    display: inline-block;
-    border: none;
-    cursor: pointer;
-  }
-
-  .play-button:hover {
-    background: #3182ce;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
-  }
-
-  /* Tournaments Section */
-  .tournaments-section {
-    margin-bottom: 50px;
-  }
-
-  .section-header {
+  .subscription-status {
     text-align: center;
-    margin-bottom: 30px;
+    margin-top: 20px;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+  }
+
+  .status-badge.basic {
+    background: #4caf50;
+    color: white;
+  }
+
+  .status-badge.premium {
+    background: linear-gradient(45deg, #ffd700, #ffed4a);
+    color: #1a237e;
   }
 
   .section-title {
     font-size: 2rem;
-    font-weight: bold;
+    font-weight: 600;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+
+  .benefits-section {
+    margin-bottom: 60px;
+  }
+
+  .benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .benefit-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .benefit-icon {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+  }
+
+  .benefit-title {
+    font-size: 1.2rem;
+    font-weight: 600;
     margin-bottom: 10px;
   }
 
-  .section-subtitle {
-    font-size: 1.1rem;
-    opacity: 0.9;
+  .benefit-description {
+    opacity: 0.8;
+    line-height: 1.5;
+  }
+
+  .quick-actions-section {
+    margin-bottom: 60px;
+  }
+
+  .actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .action-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .action-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .action-icon {
+    font-size: 3rem;
     margin-bottom: 20px;
-    max-width: 500px;
+  }
+
+  .action-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+  }
+
+  .action-description {
+    opacity: 0.8;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .action-features {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+  }
+
+  .feature-tag {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .action-button {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .action-button.primary {
+    background: #ffd700;
+    color: #1a237e;
+  }
+
+  .action-button.primary:hover {
+    background: #ffed4a;
+    transform: translateY(-2px);
+  }
+
+  .action-button.secondary {
+    background: transparent;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .action-button.secondary:hover {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .tournaments-section {
+    margin-bottom: 60px;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    max-width: 1000px;
     margin-left: auto;
     margin-right: auto;
   }
@@ -469,65 +623,65 @@
   .view-all-button {
     background: transparent;
     color: white;
-    border: 2px solid white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: 600;
+    border-radius: 25px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    font-weight: 600;
   }
 
   .view-all-button:hover {
-    background: white;
-    color: #667eea;
+    border-color: white;
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .tournaments-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 25px;
-    max-width: 1200px;
+    gap: 20px;
+    max-width: 1000px;
     margin: 0 auto;
   }
 
   .tournament-card {
-    background: white;
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 15px;
     padding: 25px;
-    color: #2d3748;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    transition: transform 0.2s ease;
-  }
-
-  .tournament-card:hover {
-    transform: translateY(-3px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   .tournament-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
   }
 
-  .tournament-header h3 {
-    font-size: 1.4rem;
-    font-weight: bold;
-    color: #2d3748;
-    margin: 0;
-  }
-
-  .tournament-status {
-    padding: 4px 12px;
-    border-radius: 15px;
-    font-size: 0.8rem;
+  .tournament-name {
+    font-size: 1.2rem;
     font-weight: 600;
+    margin: 0;
+    flex: 1;
+    margin-right: 15px;
   }
 
-  .tournament-status.upcoming {
-    background: #fff3cd;
-    color: #856404;
+  .tournament-prize {
+    background: linear-gradient(45deg, #ffd700, #ffed4a);
+    color: #1a237e;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .tournament-description {
+    opacity: 0.8;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    line-height: 1.4;
   }
 
   .tournament-details {
@@ -536,216 +690,270 @@
 
   .detail-item {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
-    font-size: 0.95rem;
-    color: #718096;
-  }
-
-  .detail-icon {
-    font-size: 1rem;
-  }
-
-  .tournament-footer {
-    display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 15px;
-    border-top: 1px solid #e2e8f0;
+    margin-bottom: 8px;
   }
 
-  .tournament-type {
-    padding: 4px 10px;
-    border-radius: 12px;
+  .detail-label {
+    opacity: 0.7;
+    font-size: 0.9rem;
+  }
+
+  .detail-value {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .subscription-tier {
+    padding: 3px 8px;
+    border-radius: 10px;
     font-size: 0.8rem;
     font-weight: 600;
   }
 
-  .tournament-type.premium {
-    background: #fef3c7;
-    color: #d97706;
-  }
-
-  .tournament-button {
-    padding: 8px 20px;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .tournament-button.premium {
-    background: #f59e0b;
+  .subscription-tier.basic {
+    background: #4caf50;
     color: white;
   }
 
-  .tournament-button.premium:hover {
-    background: #d97706;
+  .subscription-tier.premium {
+    background: linear-gradient(45deg, #ffd700, #ffed4a);
+    color: #1a237e;
   }
 
-  /* How to Play Section */
-  .how-to-play {
-    margin-bottom: 50px;
-  }
-
-  .steps-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 25px;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .step-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 30px 25px;
+  .tournament-actions {
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: transform 0.2s ease;
   }
 
-  .step-card:hover {
-    transform: translateY(-2px);
-  }
-
-  .step-number {
-    width: 50px;
-    height: 50px;
-    background: #4299e1;
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin: 0 auto 15px;
-  }
-
-  .step-card h3 {
-    font-size: 1.3rem;
+  .join-button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
     font-weight: 600;
-    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
   }
 
-  .step-card p {
-    font-size: 0.95rem;
-    opacity: 0.9;
-    line-height: 1.5;
+  .join-button.free {
+    background: #4caf50;
+    color: white;
   }
 
-  /* Premium CTA Section */
-  .premium-cta {
+  .join-button.free:hover {
+    background: #45a049;
+  }
+
+  .join-button.signin-required {
+    background: #2196f3;
+    color: white;
+  }
+
+  .join-button.signin-required:hover {
+    background: #1976d2;
+  }
+
+  .join-button.subscribe-required {
+    background: #ff6b6b;
+    color: white;
+  }
+
+  .join-button.subscribe-required:hover {
+    background: #ff5252;
+  }
+
+  .join-button.upgrade-required {
+    background: #ffa726;
+    color: white;
+  }
+
+  .join-button.upgrade-required:hover {
+    background: #ff9800;
+  }
+
+  .tiers-section {
+    margin-bottom: 60px;
+  }
+
+  .tiers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
     max-width: 800px;
     margin: 0 auto;
   }
 
-  .premium-card {
-    background: white;
+  .tier-card {
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 20px;
-    padding: 40px;
-    color: #2d3748;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 40px;
-    align-items: center;
+    padding: 30px;
+    position: relative;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
-  .premium-content h2 {
-    font-size: 2.2rem;
-    font-weight: bold;
+  .tier-card.featured {
+    border: 2px solid #ffd700;
+    transform: scale(1.05);
+  }
+
+  .tier-badge {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffd700;
+    color: #1a237e;
+    padding: 5px 15px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .tier-header {
+    text-align: center;
+    margin-bottom: 25px;
+  }
+
+  .tier-name {
+    font-size: 1.5rem;
+    font-weight: 600;
     margin-bottom: 10px;
-    color: #2d3748;
   }
 
-  .premium-description {
-    font-size: 1.1rem;
-    color: #718096;
-    margin-bottom: 25px;
-    line-height: 1.5;
+  .tier-price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ffd700;
   }
 
-  .pricing {
-    margin-bottom: 25px;
-  }
-
-  .price-amount {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: #4299e1;
-    margin-bottom: 5px;
-  }
-
-  .price-period {
+  .period {
     font-size: 1rem;
-    color: #718096;
+    opacity: 0.8;
   }
 
-  .premium-button {
-    background: #f59e0b;
-    color: white;
+  .tier-features {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 25px;
+  }
+
+  .tier-features li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .tier-features li:last-child {
+    border-bottom: none;
+  }
+
+  .tier-button {
+    width: 100%;
+    padding: 15px;
     border: none;
-    padding: 15px 40px;
-    border-radius: 10px;
-    font-size: 1.1rem;
+    border-radius: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
   }
 
-  .premium-button:hover {
-    background: #d97706;
+  .tier-button.primary {
+    background: #ffd700;
+    color: #1a237e;
+  }
+
+  .tier-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
   }
 
-  .premium-features {
+  .signup-section {
+    margin-bottom: 60px;
+  }
+
+  .signup-cta {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .signup-cta h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+
+  .signup-cta p {
+    opacity: 0.8;
+    margin-bottom: 25px;
+  }
+
+  .cta-buttons {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
-  .feature-item {
-    font-size: 1rem;
-    font-weight: 500;
-    color: #4a5568;
+  .cta-button {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
   }
 
-  /* Responsive Design */
+  .cta-button.primary {
+    background: #ffd700;
+    color: #1a237e;
+  }
+
+  .cta-button.primary:hover {
+    background: #ffed4a;
+    transform: translateY(-2px);
+  }
+
+  .cta-button.secondary {
+    background: transparent;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .cta-button.secondary:hover {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
   @media (max-width: 768px) {
-    .stats-grid {
+    .main-title {
+      font-size: 2.5rem;
+    }
+
+    .actions-grid {
       grid-template-columns: 1fr;
-      max-width: 250px;
-    }
-
-    .game-card {
-      flex-direction: column;
-      text-align: center;
-      gap: 20px;
-    }
-
-    .game-action {
-      margin-left: 0;
     }
 
     .tournaments-grid {
       grid-template-columns: 1fr;
     }
 
-    .steps-grid {
+    .tiers-grid {
       grid-template-columns: 1fr;
     }
 
-    .premium-card {
-      grid-template-columns: 1fr;
+    .tier-card.featured {
+      transform: none;
+    }
+
+    .section-header {
+      flex-direction: column;
+      gap: 15px;
       text-align: center;
-      gap: 30px;
     }
 
     .tournament-header {
@@ -753,40 +961,19 @@
       gap: 10px;
     }
 
-    .tournament-footer {
-      flex-direction: column;
-      gap: 15px;
-      align-items: stretch;
-    }
-
-    .tournament-button {
+    .tournament-name {
+      margin-right: 0;
       text-align: center;
     }
-  }
 
-  @media (max-width: 480px) {
-    .nationwide-container {
-      padding: 15px;
+    .auth-buttons {
+      flex-direction: column;
+      align-items: center;
     }
 
-    .game-header h1 {
-      font-size: 2rem;
-    }
-
-    .game-header p {
-      font-size: 1rem;
-    }
-
-    .section-title {
-      font-size: 1.7rem;
-    }
-
-    .premium-card {
-      padding: 25px 20px;
-    }
-
-    .premium-content h2 {
-      font-size: 1.8rem;
+    .cta-buttons {
+      flex-direction: column;
+      align-items: center;
     }
   }
 </style>

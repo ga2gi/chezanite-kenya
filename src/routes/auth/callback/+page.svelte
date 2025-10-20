@@ -1,36 +1,42 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase.js';
   import { goto } from '$app/navigation';
 
-  export let data;
+  export let data: { token_hash?: string; type?: string; next?: string };
 
-  let loading = true;
-  let error = null;
+  let loading: boolean = true;
+  let error: string | null = null;
 
-  onMount(async () => {
-    try {
-      if (data.token_hash && data.type === 'magiclink') {
-        // Verify the magic link token with Supabase
-        const { error: verifyError } = await supabase.auth.verifyOtp({
-          token_hash: data.token_hash,
-          type: 'magiclink'
-        });
+  onMount(() => {
+    (async () => {
+      try {
+        if (data.token_hash && data.type === 'magiclink') {
+          // Verify the magic link token with Supabase
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: data.token_hash,
+            type: 'magiclink'
+          });
 
-        if (verifyError) {
-          throw verifyError;
+          if (verifyError) {
+            throw verifyError;
+          }
+
+          // Success! Redirect to the intended page
+          await goto(data.next ?? '/', { replaceState: true });
+        } else {
+          throw new Error('Invalid authentication parameters');
         }
-
-        // Success! Redirect to the intended page
-        await goto(data.next, { replace: true });
-      } else {
-        throw new Error('Invalid authentication parameters');
+      } catch (err: unknown) {
+        console.error('Magic link verification error:', err);
+        if (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string') {
+          error = (err as any).message;
+        } else {
+          error = String(err ?? 'Unknown error');
+        }
+        loading = false;
       }
-    } catch (err) {
-      console.error('Magic link verification error:', err);
-      error = err.message;
-      loading = false;
-    }
+    })();
   });
 </script>
 

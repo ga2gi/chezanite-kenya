@@ -1,20 +1,25 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase.js';
   import { goto } from '$app/navigation';
 
-  let user = null;
-  let menuOpen = false;
+  // Props passed from layout (optional) to avoid prop-type mismatches
+  export let user: any = null;
+  export let handleSignOut: (() => Promise<void>) | undefined;
+  export let navigateTo: ((path: string) => void) | undefined;
 
-  onMount(async () => {
-    // Get initial session
-    const { data: { session } } = await supabase.auth.getSession();
-    user = session?.user;
+  let menuOpen: boolean = false;
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+  // Use a non-async onMount to return a cleanup function synchronously
+  onMount(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       user = session?.user;
-      
+    })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+      user = session?.user;
+
       if (event === 'SIGNED_IN') {
         console.log('User signed in:', user?.email);
         menuOpen = false; // Close menu on sign in
@@ -24,27 +29,44 @@
     return () => subscription.unsubscribe();
   });
 
-  async function handleSignOut() {
+  async function localHandleSignOut(): Promise<void> {
     await supabase.auth.signOut();
     user = null;
     menuOpen = false;
   }
 
-  function toggleMenu() {
+  function toggleMenu(): void {
     menuOpen = !menuOpen;
   }
 
-  function closeMenu() {
+  function closeMenu(): void {
     menuOpen = false;
   }
 
-  function navigateTo(path) {
+  function localNavigateTo(path: string): void {
     goto(path);
     closeMenu();
   }
+
+  // If parent didn't provide handlers, use local implementations
+  if (!navigateTo) {
+    // assign the local function to the exported name so templates use it
+    navigateTo = localNavigateTo;
+  }
+
+  if (!handleSignOut) {
+    handleSignOut = localHandleSignOut;
+  }
+
+  function handleOverlayKey(e: KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+      e.preventDefault();
+      closeMenu();
+    }
+  }
 </script>
 
-<header class="header">
+<header class="header" class:menu-open={menuOpen}>
   <div class="header-container">
     <!-- Logo -->
     <div class="logo-section">
@@ -103,7 +125,13 @@
     </nav>
 
     <!-- Mobile Menu Button -->
-    <button class="mobile-menu-button" on:click={toggleMenu}>
+    <button
+      class="mobile-menu-button"
+      on:click={toggleMenu}
+      aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+      aria-expanded={menuOpen}
+      type="button"
+    >
       <span class="hamburger-line"></span>
       <span class="hamburger-line"></span>
       <span class="hamburger-line"></span>
@@ -172,7 +200,14 @@
 
   <!-- Overlay -->
   {#if menuOpen}
-    <div class="overlay" on:click={closeMenu}></div>
+    <div
+      class="overlay"
+      role="button"
+      tabindex="0"
+      on:click={closeMenu}
+      on:keydown={handleOverlayKey}
+      aria-label="Close menu"
+    ></div>
   {/if}
 </header>
 

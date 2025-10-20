@@ -1,49 +1,49 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase.js';
   import { goto } from '$app/navigation';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
 
-  let user = null;
-  let loading = true;
+  let user: any = null;
+  let loading: boolean = true;
 
-  onMount(async () => {
-    try {
-      // Get initial session
-      const { data: { session } } = await supabase.auth.getSession();
+  onMount(() => {
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        user = session?.user;
+      } catch (err) {
+        console.error('Layout auth error:', err);
+      } finally {
+        loading = false;
+      }
+    })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
       user = session?.user;
 
-      // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        user = session?.user;
-        
-        if (event === 'SIGNED_IN') {
-          console.log('User signed in:', user?.email);
-        } else if (event === 'SIGNED_OUT') {
-          console.log('User signed out');
-          user = null;
-        }
-      });
+      if (event === 'SIGNED_IN') {
+        console.log('User signed in:', user?.email);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
+        user = null;
+      }
+    });
 
-      return () => subscription.unsubscribe();
-    } catch (error) {
-      console.error('Layout auth error:', error);
-    } finally {
-      loading = false;
-    }
+    return () => subscription.unsubscribe();
   });
 
-  async function handleSignOut() {
+  async function handleSignOut(): Promise<void> {
     try {
       await supabase.auth.signOut();
       user = null;
-    } catch (error) {
-      console.error('Sign out error:', error);
+    } catch (err) {
+      console.error('Sign out error:', err);
     }
   }
 
-  function navigateTo(path) {
+  function navigateTo(path: string): void {
     goto(path);
   }
 </script>

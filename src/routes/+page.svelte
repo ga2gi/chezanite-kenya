@@ -11,7 +11,7 @@
   <section class="hero">
     <div class="container">
       <div class="hero-content">
-        <h1 class="hero-title">Game Nights Made Awesome!</h1>
+        <h1 class="hero-title">WELCOME TO GAMENITE KENYA</h1>
         <p class="hero-subtitle">
           Play with friends in rooms or compete nationwide. Fun guaranteed! ❤️
         </p>
