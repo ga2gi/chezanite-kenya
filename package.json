@@ -23,6 +23,9 @@
 	"pnpm": {
 		"onlyBuiltDependencies": [
 			"esbuild"
+		],
+		"ignoredBuiltDependencies": [
+			"@vercel/speed-insights"
 		]
 	},
 	"dependencies": {
