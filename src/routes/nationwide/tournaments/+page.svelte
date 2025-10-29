@@ -584,7 +584,7 @@
 <style>
   .tournaments-container {
     min-height: 100vh;
-    background: linear-gradient(135deg, #0a3796 0%, #1c2b8c 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     padding: 0;
   }
@@ -610,7 +610,7 @@
     font-size: 3rem;
     font-weight: 700;
     margin-bottom: 10px;
-    background: linear-gradient(45deg, #fff, #ffd700);
+    background: linear-gradient(45deg, #fff, #ff7b00);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -763,7 +763,7 @@
   .filter-tab {
     background: transparent;
     border: none;
-    color: white;
+    color: rgb(225, 230, 233);
     padding: 10px 20px;
     border-radius: 8px;
     cursor: pointer;
@@ -1063,7 +1063,7 @@
 
   .action-btn.outline {
     background: transparent;
-    color: white;
+    color: rgb(28, 8, 8);
     border: 1px solid rgba(255, 255, 255, 0.3);
   }
 

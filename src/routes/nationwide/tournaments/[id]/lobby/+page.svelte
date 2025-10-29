@@ -6,7 +6,7 @@
 
   let tournament: any = null;
   let isLoading = true;
-  let countdown: string = '15:00';
+  let countdown: string = '2:00';
   let connectedPlayers: any[] = [];
   let practiceQuestions: any[] = [];
   let currentPracticeQuestion: number = 0;
@@ -74,9 +74,9 @@
   }
 
   function startCountdown(): void {
-    // Simulate 15-minute countdown
-    let seconds = 15 * 60; // 15 minutes in seconds
-    
+    // Simulate 2-minute countdown
+    let seconds = 2 * 60; // 2 minutes in seconds
+
     const timer = setInterval(() => {
       seconds--;
       
